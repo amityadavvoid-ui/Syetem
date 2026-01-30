@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <title>Solo Leveling System</title>
+  
+  <meta name="theme-color" content="#05070a">
+  <link rel="stylesheet" href="css/style.css" />
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+
+<body>
+<div id="bgClouds">
+  <div class="bg-cloud deep centered"></div>
+  <div class="bg-cloud centered"></div>
+</div>
+
+  <div id="bgParticles"></div>
+  <!-- Cosmic Star Field -->
+<div id="cosmic-stars"></div>
+
+  <h1 class="title">SYSTEM</h1>
+  <div class="system-pill">PLAYER STATUS</div>
+
+  <div class="avatar-wrapper">
+    <div class="avatar-ring"></div>
+    <img id="avatarImage" src="https://via.placeholder.com/150/0f172a/36ffd1?text=PLAYER" alt="Avatar" />
+    <input type="file" id="avatarInput" accept="image/*" hidden />
+  </div>
+
+  <h2 id="playerTitle">Unawakened</h2>
+  <p id="rankText">Rank E · Level <span id="levelTextInline">1</span></p>
+
+  <div class="meta">
+    <div>
+        <span id="titleMeta">Unawakened</span>
+        <strong>TITLE</strong>
+    </div>
+    <div>
+        <span>System</span>
+        <strong>ACTIVE</strong>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>ATTRIBUTES</h3>
+      <div class="attr">
+        STR 
+        <div class="bar"><div id="strBar"></div></div> 
+        <span id="strVal">10</span>
+      </div>
+      <div class="attr">
+        AGI 
+        <div class="bar"><div id="agiBar"></div></div> 
+        <span id="agiVal">10</span>
+      </div>
+      <div class="attr">
+        INT 
+        <div class="bar"><div id="intBar"></div></div> 
+        <span id="intVal">10</span>
+      </div>
+      <div class="attr">
+        VIT 
+        <div class="bar"><div id="vitBar"></div></div> 
+        <span id="vitVal">10</span>
+      </div>
+      <div class="attr">
+        WILL 
+        <div class="bar"><div id="willBar"></div></div> 
+        <span id="willVal">10</span>
+      </div>
+    </div>
+
+    <div class="card level-panel">
+      <h3>LEVEL</h3>
+      <div class="level-ring">
+        <svg viewBox="0 0 140 140">
+          <circle class="bg-ring" cx="70" cy="70" r="60" />
+          <circle id="xpRing" cx="70" cy="70" r="60" />
+        </svg>
+        <div class="level-center">
+          <strong id="levelCenter">1</strong>
+          <span>LEVEL</span>
+          <span id="xpText">XP 0 / 100</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card daily-quests">
+    <h3>DAILY QUESTS</h3>
+    <div id="dailyList"></div>
+    
+    <button id="addQuestBtn">+ NEW QUEST</button>
+    <p id="questCount" style="text-align:center; font-size:11px; margin-top:8px; opacity:0.6;">0 / 15</p>
+  </div>
+
+  <div class="card">
+     <h3>INTERFERENCE</h3>
+     <button id="btnInterference" style="width:100%; border-color: #ef4444; color: #ef4444;">LOG INTERFERENCE</button>
+  </div>
+
+  <!-- INTERFERENCE STATUS PANEL (Task 4) -->
+  <div id="interferenceStatusPanel" class="card hidden interference-panel" onclick="this.classList.add('hidden')">
+      <h3>INTERFERENCE AUDIT</h3>
+      <div id="interferenceGrid" class="audit-grid"></div>
+      <p style="text-align:center; font-size:10px; color:#ef4444; margin-top:8px;">LAST 30 DAYS</p>
+  </div>
+
+  <div class="card">
+    <h3>RESET TIMER</h3>
+    <p id="resetTimer" style="text-align:center; font-size:20px; font-weight:bold; letter-spacing:2px; color:#36ffd1;">--:--:--</p>
+  </div>
+
+  <div class="card">
+    <h3>STREAK</h3>
+    <div class="streak-stats">
+        <div class="streak-stat">
+            <small>Current</small>
+            <strong id="currentStreak">0</strong>
+        </div>
+        <div class="streak-stat highlight">
+            <small>Highest</small>
+            <strong id="maxStreak">0</strong>
+        </div>
+    </div>
+    <div id="streakCalendar" class="calendar-grid"></div>
+    <div style="text-align:right; margin-top:5px;">
+        <button id="toggleCalendarBtn" style="width:auto; padding:4px 8px; font-size:10px;">EXPAND</button>
+    </div>
+  </div>
+
+  <div class="card notes-panel">
+    <h3>SYSTEM NOTES</h3>
+    <textarea id="systemNotes" placeholder="Enter log entry..."></textarea>
+  </div>
+
+  <div class="card pomodoro-panel">
+    <h3>POMODORO TIMER</h3>
+    <div class="timer-display" id="pomodoroDisplay">35:00</div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 0;">
+        <button id="startPomodoro">START</button>
+        <button id="resetPomodoro" style="border-color:#ef4444; color:#ef4444;">RESET</button>
+    </div>
+    <p style="text-align:center; font-size:10px; margin-top:8px; opacity:0.5;">Reward: Small XP Boost</p>
+  </div>
+
+  <div class="card player-status-panel">
+    <h3>SYSTEM MESSAGE</h3>
+    <div id="systemStatusBadge" class="system-status-badge">SYSTEM STATUS: STABLE</div>
+    <p id="systemMessage">You are weak. Survival is unlikely.</p>
+    <div id="shadowProgress" class="shadow-progress"></div>
+    <div id="unknownProgress" class="shadow-progress locked">
+  <span class="locked-label">UNKNOWN ENTITY</span>
+  <span id="unknownProgressValue">Progress: 0%</span>
+</div>
+
+<div id="grimProgress" class="shadow-progress locked">
+  <span class="locked-label">UNKNOWN ENTITY</span>
+  <span id="grimProgressValue">Alignment Drift: 0%</span>
+</div>
+</div>
+  
+
+  <div id="questModal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="modalTitle">EDIT QUEST</h3>
+      <input id="editQuestInput" type="text" placeholder="Quest Name" />
+      <select id="editQuestStat" style="display:none; width:100%; background:rgba(0,0,0,0.4); color:#fff; padding:10px; border:1px solid rgba(255,255,255,0.1); border-radius:4px; margin-bottom:8px;">
+          <option value="STR">STR</option>
+          <option value="AGI">AGI</option>
+          <option value="INT">INT</option>
+          <option value="VIT">VIT</option>
+          <option value="WILL">WILL</option>
+      </select>
+      <div class="modal-buttons">
+        <button id="saveQuestEdit">SAVE</button>
+        <button id="deleteQuest" style="border-color:#ef4444; color:#ef4444;">DELETE</button>
+        <button id="cancelQuestEdit" style="border-color:#64748b; color:#64748b;">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PENALTY MODAL -->
+  <div id="penaltyModal" class="modal hidden penalty-theme">
+    <div class="modal-content penalty-content">
+      <h3 style="color: #ef4444; text-shadow: 0 0 10px #ef4444;">PENALTY</h3>
+      <p>You failed to complete all daily quests. Penalty has been enforced.</p>
+      <div class="modal-buttons">
+        <button id="closePenaltyModal" style="border-color: #ef4444; color: #ef4444; width: 100%;">ACCEPT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERFERENCE MODAL (Task 3 Types) -->
+  <div id="interferenceModal" class="modal hidden">
+    <div class="modal-content" style="border-color: #ef4444;">
+      <h3 style="color: #ef4444;">LOG INTERFERENCE</h3>
+      <div id="interferenceList" style="text-align:left; margin: 10px 0; color: #cbd5e1; font-size: 13px;">
+          <label style="display:block; margin-bottom:8px;"><input type="checkbox" value="Screen Time"> Excessive Screen Time</label>
+          <label style="display:block; margin-bottom:8px;"><input type="checkbox" value="Porn/Sexual"> Porn / Sexual Content</label>
+          <label style="display:block; margin-bottom:8px;"><input type="checkbox" value="Doom Scrolling"> Doom Scrolling</label>
+          <label style="display:block; margin-bottom:8px;"><input type="checkbox" value="Procrastination"> Procrastination / Avoidance</label>
+          <label style="display:block; margin-bottom:8px;"><input type="checkbox" value="Gaming Binge"> Gaming / Entertainment Binge</label>
+          <label style="display:block; margin-bottom:8px;"><input type="checkbox" value="Sleep Deprivation"> Sleep Deprivation</label>
+          <label style="display:block; margin-bottom:8px;"><input type="checkbox" value="Junk Consumption"> Junk Consumption</label>
+      </div>
+      <div class="modal-buttons">
+        <button id="saveInterference" style="border-color: #ef4444; color: #ef4444;">CONFIRM LOG</button>
+        <button id="closeInterference" style="border-color:#64748b; color:#64748b;">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM STATE MODAL (PHASE 3) -->
+  <div id="systemStateModal" class="modal hidden">
+    <div class="modal-content" style="border-color: var(--border-color); box-shadow: 0 0 20px rgba(0,0,0,0.8);">
+      <h3 id="systemStateTitle" style="color:#ef4444; letter-spacing:2px;">SYSTEM NOTICE</h3>
+      <p id="systemStateText" style="margin: 16px 0; line-height: 1.5; color: #e2e8f0;">...</p>
+      <div class="modal-buttons">
+        <button id="closeSystemStateModal" style="width:100%; border-color: #ef4444; color: #ef4444;">ACKNOWLEDGE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM MODAL (Generic) -->
+  <div id="systemModal" class="modal hidden">
+    <div class="modal-content" style="border-color: #ef4444;">
+      <h3 id="systemModalTitle" style="color: #ef4444;">SYSTEM NOTICE</h3>
+      <div id="systemModalBody" style="color: #fff; margin: 10px 0;"></div>
+      <div class="modal-buttons">
+        <button onclick="document.getElementById('systemModal').classList.add('hidden')" style="border-color: #ef4444; color: #ef4444;">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/core.js"></script>
+  <script src="js/daily.js"></script>
+  <script src="js/streak.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
