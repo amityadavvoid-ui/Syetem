@@ -6,7 +6,7 @@
   <title>Solo Leveling System</title>
   
   <meta name="theme-color" content="#05070a">
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="style.css" />
   
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -49,29 +49,39 @@
     <div class="card">
       <h3>ATTRIBUTES</h3>
       <div class="attr">
-        STR 
-        <div class="bar"><div id="strBar"></div></div> 
-        <span id="strVal">10</span>
+        <div class="attr-label">
+          <span>STR</span>
+          <span id="strVal">10</span>
+        </div>
+        <div class="bar"><div id="strBar"></div></div>
       </div>
       <div class="attr">
-        AGI 
-        <div class="bar"><div id="agiBar"></div></div> 
-        <span id="agiVal">10</span>
+        <div class="attr-label">
+          <span>AGI</span>
+          <span id="agiVal">10</span>
+        </div>
+        <div class="bar"><div id="agiBar"></div></div>
       </div>
       <div class="attr">
-        INT 
-        <div class="bar"><div id="intBar"></div></div> 
-        <span id="intVal">10</span>
+        <div class="attr-label">
+          <span>INT</span>
+          <span id="intVal">10</span>
+        </div>
+        <div class="bar"><div id="intBar"></div></div>
       </div>
       <div class="attr">
-        VIT 
-        <div class="bar"><div id="vitBar"></div></div> 
-        <span id="vitVal">10</span>
+        <div class="attr-label">
+          <span>VIT</span>
+          <span id="vitVal">10</span>
+        </div>
+        <div class="bar"><div id="vitBar"></div></div>
       </div>
       <div class="attr">
-        WILL 
-        <div class="bar"><div id="willBar"></div></div> 
-        <span id="willVal">10</span>
+        <div class="attr-label">
+          <span>WILL</span>
+          <span id="willVal">10</span>
+        </div>
+        <div class="bar"><div id="willBar"></div></div>
       </div>
     </div>
 
@@ -84,9 +94,10 @@
         </svg>
         <div class="level-center">
           <strong id="levelCenter">1</strong>
-          <span>LEVEL</span>
-          <span id="xpText">XP 0 / 100</span>
         </div>
+      </div>
+      <div style="text-align: center; margin-top: 8px; font-size: 11px; color: #6c7a89;">
+        <span id="xpText">XP 0 / 100</span>
       </div>
     </div>
   </div>
@@ -238,10 +249,10 @@
     </div>
   </div>
 
-  <script src="js/core.js"></script>
-  <script src="js/daily.js"></script>
-  <script src="js/streak.js"></script>
-  <script src="js/timer.js"></script>
-  <script src="js/ui.js"></script>
+  <script src="core.js"></script>
+  <script src="daily.js"></script>
+  <script src="streak.js"></script>
+  <script src="timer.js"></script>
+  <script src="ui.js"></script>
 </body>
 </html>
