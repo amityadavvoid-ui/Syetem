@@ -27,7 +27,7 @@
 
   <div class="avatar-wrapper">
     <div class="avatar-ring"></div>
-    <img id="avatarImage" src="https://via.placeholder.com/150/0f172a/36ffd1?text=PLAYER" alt="Avatar" />
+    <img id="avatarImage" src="avatar.png" alt="Avatar" />
     <input type="file" id="avatarInput" accept="image/*" hidden />
   </div>
 
@@ -112,7 +112,10 @@
 
   <div class="card">
      <h3>INTERFERENCE</h3>
-     <button id="btnInterference" style="width:100%; border-color: #ef4444; color: #ef4444;">LOG INTERFERENCE</button>
+     <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 0;">
+         <button id="btnInterference" style="border-color: #ef4444; color: #ef4444;">LOG</button>
+         <button id="btnViewInterference" style="border-color: #64748b; color: #64748b;">AUDIT</button>
+     </div>
   </div>
 
   <!-- INTERFERENCE STATUS PANEL (Task 4) -->

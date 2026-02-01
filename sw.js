@@ -3,12 +3,12 @@ const urlsToCache = [
   '/',
   'index.html',
   'manifest.json',
-  'css/style.css',
-  'js/core.js',
-  'js/ui.js',
-  'js/daily.js',
-  'js/timer.js',
-  'js/streak.js',
+  'style.css',
+  'core.js',
+  'ui.js',
+  'daily.js',
+  'timer.js',
+  'streak.js',
   // Make sure you actually have these image files in your root folder!
   // If you don't, comment them out or the service worker might fail to install.
   'icon-192.png',
