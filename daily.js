@@ -212,10 +212,14 @@ function openQuestModal(index) {
 function checkStreak() {
   const allCompleted = dailyQuests.length > 0 && dailyQuests.every(q => q.completed);
   if (allCompleted) {
-    const today = new Date().toDateString();
-    const streaks = JSON.parse(localStorage.getItem("dailyStreaks") || "{}");
-    streaks[today] = true;
-    localStorage.setItem("dailyStreaks", JSON.stringify(streaks));
+    const today = new Date().toISOString().split("T")[0];
+    const streaks = JSON.parse(localStorage.getItem("solo_streak_days") || "[]");
+
+    if (!streaks.includes(today)) {
+      streaks.push(today);
+      localStorage.setItem("solo_streak_days", JSON.stringify(streaks));
+    }
+
     if (typeof renderStreakCalendar === 'function') renderStreakCalendar();
   }
 }

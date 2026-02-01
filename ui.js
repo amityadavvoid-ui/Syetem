@@ -198,6 +198,57 @@ if (closeInterferenceBtn) {
   };
 }
 
+// Interference Audit Button
+const btnViewInterference = document.getElementById('btnViewInterference');
+if (btnViewInterference) {
+  btnViewInterference.onclick = () => {
+    renderInterferenceAudit();
+    const panel = document.getElementById('interferenceStatusPanel');
+    if (panel) panel.classList.remove('hidden');
+  };
+}
+
+function renderInterferenceAudit() {
+  const grid = document.getElementById('interferenceGrid');
+  if (!grid) return;
+
+  const log = JSON.parse(localStorage.getItem('solo_interference_log') || '{}');
+  const today = new Date();
+
+  grid.innerHTML = '';
+
+  // Generate last 30 days
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'narrow', day: 'numeric' });
+
+    const dayCell = document.createElement('div');
+    dayCell.className = 'audit-day';
+
+    const label = document.createElement('div');
+    label.className = 'audit-label';
+    label.textContent = dayName;
+
+    const hasInterference = log[dateStr] && log[dateStr].length > 0;
+
+    const indicator = document.createElement('div');
+    indicator.className = 'audit-indicator';
+    if (hasInterference) {
+      indicator.classList.add('has-interference');
+      indicator.title = `${log[dateStr].length} interference(s) logged`;
+    } else {
+      indicator.classList.add('clean');
+      indicator.title = 'No interference logged';
+    }
+
+    dayCell.appendChild(label);
+    dayCell.appendChild(indicator);
+    grid.appendChild(dayCell);
+  }
+}
+
 /* ================================
    ISSUE 4: SYSTEM MESSAGE PANEL
    Strict behavior based on state
@@ -291,6 +342,26 @@ function updateUnknownProgress() {
       grimProgressValue.textContent = 'Authority Recognized';
     }
   }
+}
+
+/* ================================
+   POMODORO REWARD MODAL
+================================ */
+
+function showPomodoroRewardModal() {
+  const modal = document.getElementById('systemModal');
+  const title = document.getElementById('systemModalTitle');
+  const body = document.getElementById('systemModalBody');
+  
+  if (!modal) return;
+  
+  title.textContent = 'FOCUS SESSION COMPLETE';
+  title.style.color = '#22c55e';
+  body.textContent = '35 minutes of focused training. +5 XP awarded.';
+  body.style.color = '#e5e5e5';
+  body.style.textAlign = 'center';
+  body.style.fontSize = '15px';
+  modal.classList.remove('hidden');
 }
 
 /* ================================
@@ -476,16 +547,25 @@ document.addEventListener('DOMContentLoaded', () => {
   updateUI();
   initParticleSystem();
   initCosmicStars();
-  
+
+  // Close button for systemStateModal
+  const closeSystemStateBtn = document.getElementById('closeSystemStateModal');
+  if (closeSystemStateBtn) {
+    closeSystemStateBtn.onclick = () => {
+      const modal = document.getElementById('systemStateModal');
+      if (modal) modal.classList.add('hidden');
+    };
+  }
+
   // Check for penalty modal
   const todayStr = new Date().toDateString();
   const lastPenaltyDate = localStorage.getItem('solo_last_penalty_date');
-  
+
   if (lastPenaltyDate === todayStr) {
     const penaltyModal = document.getElementById('penaltyModal');
     if (penaltyModal) {
       penaltyModal.classList.remove('hidden');
-      
+
       const closeBtn = document.getElementById('closePenaltyModal');
       if (closeBtn) {
         closeBtn.onclick = () => {
