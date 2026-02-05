@@ -48,62 +48,59 @@ function spawnParticle() {
 
   particle.style.opacity = '0';
   container.appendChild(particle);
-  activeParticles.push(particle);
 
-  // Lifecycle stages
-  const stages = {
-    fadeIn: 0.2,
-    sustain: 0.6,
-    fadeOut: 0.2
-  };
+  // Add to active particles with metadata
+  activeParticles.push({
+    el: particle,
+    createdAt: performance.now(),
+    duration: duration,
+    maxOpacity: opacity,
+    fadeInDuration: duration * 0.2,
+    sustainDuration: duration * 0.6
+  });
+}
 
-  const fadeInDuration = duration * stages.fadeIn;
-  const sustainDuration = duration * stages.sustain;
-  const fadeOutDuration = duration * stages.fadeOut;
+function animateParticles(timestamp) {
+  for (let i = activeParticles.length - 1; i >= 0; i--) {
+    const p = activeParticles[i];
+    const elapsed = timestamp - p.createdAt;
 
-  let elapsed = 0;
-  const step = 50;
-
-  const lifecycle = setInterval(() => {
-    elapsed += step;
-    const progress = elapsed / duration;
+    // Remove when complete
+    if (elapsed >= p.duration) {
+      if (p.el.parentNode) {
+        p.el.parentNode.removeChild(p.el);
+      }
+      activeParticles.splice(i, 1);
+      continue;
+    }
 
     // Calculate opacity
     let currentOpacity;
-    if (elapsed < fadeInDuration) {
-      currentOpacity = (elapsed / fadeInDuration) * opacity;
-    } else if (elapsed < fadeInDuration + sustainDuration) {
-      currentOpacity = opacity;
+    if (elapsed < p.fadeInDuration) {
+      currentOpacity = (elapsed / p.fadeInDuration) * p.maxOpacity;
+    } else if (elapsed < p.fadeInDuration + p.sustainDuration) {
+      currentOpacity = p.maxOpacity;
     } else {
-      const fadeProgress = (elapsed - fadeInDuration - sustainDuration) / fadeOutDuration;
-      currentOpacity = opacity * (1 - fadeProgress);
+      const fadeOutDuration = p.duration - p.fadeInDuration - p.sustainDuration;
+      const fadeProgress = (elapsed - p.fadeInDuration - p.sustainDuration) / fadeOutDuration;
+      currentOpacity = p.maxOpacity * (1 - fadeProgress);
     }
 
     // Calculate position (slow upward movement)
-    const translateY = -(elapsed / duration) * 110;
+    const translateY = -(elapsed / p.duration) * 110;
 
-    particle.style.opacity = currentOpacity;
-    particle.style.transform = `translateY(${translateY}vh)`;
+    p.el.style.opacity = currentOpacity;
+    p.el.style.transform = `translateY(${translateY}vh)`;
+  }
 
-    // Remove when complete
-    if (elapsed >= duration) {
-      clearInterval(lifecycle);
-      if (particle.parentNode) {
-        particle.parentNode.removeChild(particle);
-      }
-      activeParticles = activeParticles.filter(p => p !== particle);
-    }
-  }, step);
+  requestAnimationFrame(animateParticles);
 }
 
 function initParticleSystem() {
-  setInterval(() => {
-    const tier = getTier();
-    let spawnRate;
-    if (tier === 1) spawnRate = 3000;
-    else if (tier === 2) spawnRate = 2500;
-    else spawnRate = 2000;
+  // Start animation loop
+  requestAnimationFrame(animateParticles);
 
+  setInterval(() => {
     if (Math.random() < 0.3) {
       spawnParticle();
     }
