@@ -328,10 +328,15 @@ function openQuestModal(index) {
 function checkStreak() {
   const allCompleted = dailyQuests.length > 0 && dailyQuests.every(q => q.completed);
   if (allCompleted) {
-    const today = new Date().toDateString();
-    const streaks = JSON.parse(localStorage.getItem("dailyStreaks") || "{}");
-    streaks[today] = true;
-    localStorage.setItem("dailyStreaks", JSON.stringify(streaks));
+    const todayStr = new Date().toISOString().split("T")[0];
+    const STREAK_KEY = "solo_streak_days";
+    let streakDays = JSON.parse(localStorage.getItem(STREAK_KEY)) || [];
+
+    if (!streakDays.includes(todayStr)) {
+        streakDays.push(todayStr);
+        localStorage.setItem(STREAK_KEY, JSON.stringify(streakDays));
+    }
+
     if (typeof renderStreakCalendar === 'function') renderStreakCalendar();
   }
 }

@@ -153,8 +153,18 @@ function logInterference(types) {
   });
   
   localStorage.setItem('solo_interference_log', JSON.stringify(log));
+
+  // Issue 3: Mark day as COMPLETE in Calendar/Streak
+  const STREAK_KEY = "solo_streak_days";
+  let streakDays = JSON.parse(localStorage.getItem(STREAK_KEY)) || [];
+  if (!streakDays.includes(today)) {
+      streakDays.push(today);
+      localStorage.setItem(STREAK_KEY, JSON.stringify(streakDays));
+  }
+
   updateSystemMessage(); // Update panel immediately
   showInterferenceConfirmation(); // Show dedicated modal
+  if (typeof renderStreakCalendar === 'function') renderStreakCalendar();
 }
 
 function hasInterferenceToday() {
