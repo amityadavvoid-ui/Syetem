@@ -438,271 +438,23 @@ if (notesPanel && notesTextarea) {
 }
 
 /* ================================
-   ISSUE 11: QUEST SYSTEM OVERRIDES (ORIGIN UPGRADE)
-   Cadence, Importance, Penalty Logic
+   SYSTEM LOGIC REPAIRS
 ================================ */
 
-// --- Helper: Quest Visibility ---
-function isQuestVisible(quest) {
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  // Default to Daily if undefined
-  const cadence = quest.cadence || 'daily';
-
-  if (cadence === 'daily') {
-    return true;
-  }
-
-  if (cadence === 'alternate') {
-    if (!quest.createdDate) return true; // Fallback
-    const created = new Date(quest.createdDate);
-    created.setHours(0,0,0,0);
-
-    const diffTime = Math.abs(today - created);
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays > 0 && diffDays % 2 !== 0;
-  }
-
-  if (cadence === 'specific') {
-    if (!quest.targetDate) return false;
-    const target = new Date(quest.targetDate);
-    target.setHours(0,0,0,0); // compare dates only
-
-    if (today < target) return false;
-    if (today.getTime() === target.getTime()) return true;
-
-    if (quest.repeatMode === 'daily') return true;
-    if (quest.repeatMode === 'alternate') {
-       const diffTime = Math.abs(today - target);
-       const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-       return diffDays > 0 && diffDays % 2 !== 0;
-    }
-
-    return false; // One-time quest, passed date
-  }
-
-  return true;
-}
-
-// --- Override: Render Quests (XSS FIX) ---
-window.renderQuests = function() {
-  const dailyList = document.getElementById("dailyList");
-  const questCount = document.getElementById("questCount");
-
-  if (!dailyList) return;
-  dailyList.innerHTML = "";
-
-  // Filter visible quests
-  const visibleQuests = dailyQuests.map((q, i) => ({...q, originalIndex: i}))
-                                   .filter(q => isQuestVisible(q));
-
-  visibleQuests.forEach((quest) => {
-    const div = document.createElement("div");
-    div.className = "quest-item";
-
-    // Importance Styling (Compatible with daily.js and origin CSS)
-    if (quest.importance === 'Important' || quest.importance === 'important') div.classList.add('quest-important');
-    if (quest.importance === 'Critical' || quest.importance === 'critical') div.classList.add('quest-critical');
-
-    if (quest.completed) div.classList.add("completed");
-
-    // SAFE RENDERING (textContent)
-    div.innerHTML = `
-      <div class="quest-info">
-        <span class="quest-name"></span>
-        <span class="quest-reward">+1 ${quest.stat}</span>
-      </div>
-      ${quest.cadence === 'alternate' ? '<span class="quest-tag">ALT</span>' : ''}
-      ${quest.cadence === 'specific' ? '<span class="quest-tag">DATE</span>' : ''}
-    `;
-
-    // Inject safely
-    div.querySelector('.quest-name').textContent = quest.name;
-
-    // Click to complete
-    div.addEventListener("click", (e) => {
-        completeQuest(quest.originalIndex);
-    });
-
-    // Context menu / Long press for Edit
-    div.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        openQuestModal(quest.originalIndex);
-    });
-
-    dailyList.appendChild(div);
-  });
-
-  if (questCount) {
-      questCount.textContent = `Active Tasks: ${visibleQuests.length}`;
-  }
-};
-
-// --- Override: Open Quest Modal (Inject Inputs) ---
-const originalOpenQuestModal = window.openQuestModal;
-window.openQuestModal = function(index) {
-  const modal = document.getElementById("questModal");
-  const input = document.getElementById("editQuestInput");
-  const statSelect = document.getElementById("editQuestStat");
-  const modalTitle = document.getElementById("modalTitle");
-
-  if (!modal || !input) return;
-
-  editingQuestIndex = index;
-  modal.classList.remove("hidden");
-
-  // Inject new UI if missing
-  let extraControls = document.getElementById('questExtraControls');
-  if (!extraControls) {
-    extraControls = document.createElement('div');
-    extraControls.id = 'questExtraControls';
-    extraControls.style.marginBottom = '16px';
-    extraControls.innerHTML = `
-      <div style="margin-bottom:8px;">
-        <label style="color:#6c7a89; font-size:10px; display:block; margin-bottom:4px;">IMPORTANCE</label>
-        <select id="questImportance" style="width:100%; background:rgba(0,0,0,0.4); color:#fff; padding:8px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;">
-          <option value="Normal">Normal</option>
-          <option value="Important">Important</option>
-          <option value="Critical">Critical</option>
-        </select>
-      </div>
-      <div style="margin-bottom:8px;">
-        <label style="color:#6c7a89; font-size:10px; display:block; margin-bottom:4px;">CADENCE</label>
-        <select id="questCadence" style="width:100%; background:rgba(0,0,0,0.4); color:#fff; padding:8px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;">
-          <option value="daily">Daily</option>
-          <option value="alternate">Alternate Day</option>
-          <option value="specific">Specific Date</option>
-        </select>
-      </div>
-      <div id="questDateContainer" style="display:none; margin-bottom:8px;">
-        <label style="color:#6c7a89; font-size:10px; display:block; margin-bottom:4px;">TARGET DATE</label>
-        <input type="date" id="questTargetDate" style="width:100%; background:rgba(0,0,0,0.4); color:#fff; padding:8px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;">
-        <label style="color:#6c7a89; font-size:10px; display:block; margin-top:4px; margin-bottom:4px;">REPEAT AFTER DATE?</label>
-        <select id="questRepeat" style="width:100%; background:rgba(0,0,0,0.4); color:#fff; padding:8px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;">
-          <option value="none">None (One-time)</option>
-          <option value="daily">Daily</option>
-          <option value="alternate">Alternate Day</option>
-        </select>
-      </div>
-    `;
-    // Insert before buttons
-    const buttons = modal.querySelector('.modal-buttons');
-    modal.querySelector('.modal-content').insertBefore(extraControls, buttons);
-
-    // Toggle Date Input
-    const cadenceSelect = document.getElementById('questCadence');
-    cadenceSelect.onchange = () => {
-      document.getElementById('questDateContainer').style.display =
-        cadenceSelect.value === 'specific' ? 'block' : 'none';
-    };
-  }
-
-  // Populate Fields
-  const importanceSel = document.getElementById('questImportance');
-  const cadenceSel = document.getElementById('questCadence');
-  const dateInput = document.getElementById('questTargetDate');
-  const repeatSel = document.getElementById('questRepeat');
-  const dateContainer = document.getElementById('questDateContainer');
-
-  if (index === -1) {
-    modalTitle.textContent = "NEW QUEST";
-    input.value = "";
-    statSelect.style.display = "block";
-
-    // Defaults
-    importanceSel.value = 'Normal';
-    cadenceSel.value = 'daily';
-    dateInput.value = '';
-    repeatSel.value = 'none';
-    dateContainer.style.display = 'none';
-
-    if (document.getElementById("deleteQuest")) document.getElementById("deleteQuest").style.display = "none";
-  } else {
-    const q = dailyQuests[index];
-    modalTitle.textContent = "EDIT QUEST";
-    input.value = q.name;
-    statSelect.style.display = "none";
-
-    importanceSel.value = q.importance || 'Normal';
-    cadenceSel.value = q.cadence || 'daily';
-    dateInput.value = q.targetDate || '';
-    repeatSel.value = q.repeatMode || 'none';
-    dateContainer.style.display = q.cadence === 'specific' ? 'block' : 'none';
-
-    if (document.getElementById("deleteQuest")) document.getElementById("deleteQuest").style.display = "block";
-  }
-
-  // Bind Save
-  const saveBtn = document.getElementById("saveQuestEdit");
-  const newSaveBtn = saveBtn.cloneNode(true);
-  saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
-
-  newSaveBtn.onclick = () => {
-      const name = input.value.trim();
-      if (!name) return;
-
-      const newQuestData = {
-          name,
-          importance: importanceSel.value,
-          cadence: cadenceSel.value,
-          targetDate: dateInput.value,
-          repeatMode: repeatSel.value,
-          createdDate: (index === -1 || !dailyQuests[index].createdDate) ? new Date().toISOString() : dailyQuests[index].createdDate
-      };
-
-      if (index === -1) {
-          const stat = statSelect.value;
-          dailyQuests.push({
-              ...newQuestData,
-              stat: stat,
-              completed: false
-          });
-      } else {
-          const q = dailyQuests[index];
-          Object.assign(q, newQuestData);
-      }
-
-      saveQuests();
-      renderQuests();
-      modal.classList.add("hidden");
-  };
-
-  // Bind Delete
-  const deleteBtn = document.getElementById("deleteQuest");
-  if (deleteBtn) {
-    const newDeleteBtn = deleteBtn.cloneNode(true);
-    deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
-    newDeleteBtn.onclick = () => {
-      if(index !== -1) {
-          dailyQuests.splice(index, 1);
-          saveQuests();
-          renderQuests();
-      }
-      modal.classList.add("hidden");
-    };
-  }
-
-  const cancelBtn = document.getElementById("cancelQuestEdit");
-  if (cancelBtn) {
-    cancelBtn.onclick = () => modal.classList.add("hidden");
-  }
-};
-
 // --- Override: Apply Daily Penalty ---
+// Simplified to enforce penalties on ALL uncompleted quests (no hiding)
 window.applyDailyPenalty = function() {
   let penaltyApplied = false;
 
   if (typeof dailyQuests !== 'undefined') {
       dailyQuests.forEach(q => {
-        if (isQuestVisible(q) && !q.completed) {
+        if (!q.completed) {
           const statKey = q.stat.toLowerCase();
           if (player.stats[statKey] > 0) {
             player.stats[statKey]--;
             penaltyApplied = true;
           }
-          gainXP(-10);
+          if (typeof gainXP === 'function') gainXP(-10);
         }
       });
   }
@@ -726,7 +478,8 @@ window.resetDailyCompletion = function() {
         q.completed = false;
       });
       saveQuests();
-      renderQuests();
+      // Ensure we re-render using the standard renderer
+      if (typeof renderQuests === 'function') renderQuests();
   }
 };
 
