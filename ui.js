@@ -11,10 +11,17 @@
 const PARTICLE_CAP = 25;
 let activeParticles = [];
 
-function getTier() {
-  if (player.level >= 150) return 3;
-  if (player.level >= 100) return 2;
-  return 1;
+// Helper to get detailed tier
+function getTierDetails() {
+  const level = player.level;
+  if (level >= 150) return { tier: 3, sub: '' };
+  if (level >= 100) return { tier: 2, sub: '' };
+
+  // Tier 1 Sub-tiers
+  if (level >= 71) return { tier: 1, sub: 'c' }; // Monarch Candidate
+  if (level >= 50) return { tier: 1, sub: 'b' }; // Hunter
+  if (level >= 30) return { tier: 1, sub: 'a' }; // Awakened
+  return { tier: 1, sub: '' }; // Unawakened
 }
 
 function spawnParticle() {
@@ -23,7 +30,7 @@ function spawnParticle() {
   const container = document.getElementById('bgParticles');
   if (!container) return;
 
-  const tier = getTier();
+  const { tier, sub } = getTierDetails();
   const particle = document.createElement('div');
   particle.className = 'crystal-particle';
   
@@ -38,18 +45,31 @@ function spawnParticle() {
   
   // Tier-based settings
   let duration, maxOpacity, speedMultiplier;
-  if (tier === 3) { // Grim Reaper: Heavy, slow, lingering
+
+  if (tier === 3) { // Grim Reaper
     duration = 45000;
     maxOpacity = 0.5;
     speedMultiplier = 0.5;
-  } else if (tier === 2) { // Shadow Monarch: Moderate
+  } else if (tier === 2) { // Shadow Monarch
     duration = 35000;
     maxOpacity = 0.4;
     speedMultiplier = 0.8;
-  } else { // Base
+  } else { // Tier 1
     duration = 25000;
-    maxOpacity = 0.3;
     speedMultiplier = 1.0;
+
+    if (sub === 'c') { // Monarch Candidate: Unstable
+      maxOpacity = 0.35;
+      speedMultiplier = 1.1;
+    } else if (sub === 'b') { // Hunter: Sparse
+      maxOpacity = 0.3;
+    } else if (sub === 'a') { // Awakened: Fewer
+      maxOpacity = 0.25;
+      if (Math.random() > 0.5) return; // Reduce density
+    } else { // Unawakened: Faint
+      maxOpacity = 0.2;
+      if (Math.random() > 0.3) return; // Very sparse
+    }
   }
 
   // Initial state
@@ -97,15 +117,14 @@ function spawnParticle() {
 }
 
 function initParticleSystem() {
-  // Clear existing CSS particles if any
   const container = document.getElementById('bgParticles');
   if (container) container.innerHTML = '';
 
   setInterval(() => {
-    // Spawn chance based on tier (fewer but heavier for high tiers?)
-    const tier = getTier();
+    const { tier, sub } = getTierDetails();
     let spawnChance = 0.4;
     if (tier === 3) spawnChance = 0.6;
+    if (tier === 1 && (sub === '' || sub === 'a')) spawnChance = 0.2; // Sparse for lower tiers
 
     if (Math.random() < spawnChance) {
       spawnParticle();
@@ -115,6 +134,7 @@ function initParticleSystem() {
 
 /* ================================
    ISSUE 2, 3, 4: INTERFERENCE SYSTEM
+   Final Form: Unique Types, Ephemeral Modal
 ================================ */
 
 function logInterference(types) {
@@ -125,15 +145,19 @@ function logInterference(types) {
     log[today] = [];
   }
   
+  let newInterferenceAdded = false;
   types.forEach(type => {
     if (!log[today].includes(type)) {
       log[today].push(type);
+      newInterferenceAdded = true;
     }
   });
   
-  localStorage.setItem('solo_interference_log', JSON.stringify(log));
-  updateSystemMessage(); // Update panel immediately
-  showInterferenceConfirmation(); // Show dedicated modal
+  if (newInterferenceAdded) {
+    localStorage.setItem('solo_interference_log', JSON.stringify(log));
+    updateSystemMessage(); // Update panel immediately
+    showInterferenceConfirmation(types); // Show dedicated modal
+  }
 }
 
 function hasInterferenceToday() {
@@ -142,30 +166,45 @@ function hasInterferenceToday() {
   return log[today] && log[today].length > 0;
 }
 
-function showInterferenceConfirmation() {
+function showInterferenceConfirmation(types) {
   // Dedicated ephemeral modal
-  let modal = document.getElementById('dedicatedInterferenceModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'dedicatedInterferenceModal';
-    modal.className = 'modal';
-    modal.style.zIndex = '2000';
-    modal.innerHTML = `
-      <div class="modal-content" style="border-color: #ef4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);">
-        <h3 style="color: #ef4444; margin-bottom: 10px;">INTERFERENCE LOGGED</h3>
-        <p style="color: #cbd5e1; text-align: center; margin-bottom: 20px;">Interference detected.</p>
-        <button id="dismissInterference" style="border-color: #ef4444; color: #ef4444;">ACKNOWLEDGE</button>
-      </div>
-    `;
-    document.body.appendChild(modal);
+  // "Cold, raw, truthful tone."
+  // Aggregate messages if multiple?
 
-    document.getElementById('dismissInterference').onclick = () => {
-      modal.remove();
-    };
-  }
+  const messages = [
+    "You chose temporary pleasure over discipline.",
+    "Short relief trades long decay.",
+    "Authority is lost in moments of weakness.",
+    "The System observes your hesitation.",
+    "Comfort is the enemy of ascension."
+  ];
+
+  // Pick one deterministically or random? Random is fine for "System" feel.
+  const msg = messages[Math.floor(Math.random() * messages.length)];
+
+  let modal = document.getElementById('dedicatedInterferenceModal');
+  if (modal) modal.remove(); // Replace existing if any
+
+  modal = document.createElement('div');
+  modal.id = 'dedicatedInterferenceModal';
+  modal.className = 'modal';
+  modal.style.zIndex = '2000';
+  modal.innerHTML = `
+    <div class="modal-content" style="border-color: #ef4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); text-align: center;">
+      <h3 style="color: #ef4444; margin-bottom: 16px; letter-spacing: 2px;">INTERFERENCE ACKNOWLEDGED</h3>
+      <p style="color: #cbd5e1; margin-bottom: 8px; font-weight: bold;">${types.join(" + ")}</p>
+      <p style="color: #94a3b8; font-style: italic; margin-bottom: 24px;">"${msg}"</p>
+      <button id="dismissInterference" style="width: 100%; border-color: #ef4444; color: #ef4444;">RESUME</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById('dismissInterference').onclick = () => {
+    modal.remove();
+  };
 }
 
-// Bind the log button to open the SELECTION modal (existing in HTML)
+// Bind the log button
 const btnInterference = document.getElementById('btnInterference');
 if (btnInterference) {
   btnInterference.onclick = () => {
@@ -217,25 +256,21 @@ function updateSystemMessage() {
   panel.classList.remove('state-STABLE', 'state-WARNING', 'state-UNSTABLE', 'state-DEGRADING', 'state-SUPPRESSION');
   
   if (suppressed) {
-    // Suppression takes precedence
     badgeEl.textContent = 'SYSTEM STATUS: SUPPRESSION';
     badgeEl.className = 'system-status-badge state-SUPPRESSION';
     messageEl.textContent = 'Reward systems disabled.';
     panel.classList.add('state-SUPPRESSION');
     panel.style.display = 'block';
   } else if (interference) {
-    // Interference Mode
     badgeEl.textContent = 'SYSTEM STATUS: UNSTABLE';
     badgeEl.className = 'system-status-badge state-UNSTABLE';
     messageEl.textContent = 'Interference detected.';
     panel.classList.add('state-UNSTABLE');
     panel.style.display = 'block';
   } else {
-    // Stable Mode - HIDDEN
     panel.style.display = 'none';
   }
   
-  // Also update progress panels
   updateUnknownProgress();
 }
 
@@ -256,11 +291,8 @@ function updateUnknownProgress() {
   
   // 1. Shadow Monarch Track (0-100)
   if (level < 100) {
-    // Not revealed
     unknownProgress.style.display = 'block';
     shadowProgress.style.display = 'none';
-    
-    // Remove "locked" text behavior via CSS classes or text content
     unknownProgress.classList.remove('revealed');
     if (unknownValue) {
       const pct = Math.min((level / 100) * 100, 100).toFixed(1);
@@ -268,9 +300,7 @@ function updateUnknownProgress() {
     }
     const label = unknownProgress.querySelector('.locked-label');
     if (label) label.style.visibility = 'hidden';
-
   } else {
-    // Revealed
     unknownProgress.style.display = 'none';
     shadowProgress.style.display = 'block';
   }
@@ -279,7 +309,6 @@ function updateUnknownProgress() {
   grimProgress.style.display = 'block';
   
   if (level < 150) {
-    // Not revealed
     grimProgress.classList.add('locked');
     if (grimValue) {
       const prog = Math.max(0, level - 100);
@@ -289,7 +318,6 @@ function updateUnknownProgress() {
     const label = grimProgress.querySelector('.locked-label');
     if (label) label.style.visibility = 'hidden';
   } else {
-    // Revealed
     grimProgress.classList.remove('locked');
     if (grimValue) {
       grimValue.textContent = 'Authority Recognized';
@@ -304,14 +332,12 @@ function updateUnknownProgress() {
    ISSUE 7 & 8: CALENDAR & NOTES
 ================================ */
 
-// Override renderStreakCalendar from streak.js explicitly to ensure functionality
-let isCalendarExpandedUI = false; // Internal UI state
+let isCalendarExpandedUI = false;
 
 window.renderStreakCalendar = function() {
   const streakContainer = document.getElementById("streakCalendar");
   const currentStreakEl = document.getElementById("currentStreak");
   const maxStreakEl = document.getElementById("maxStreak");
-  const toggleBtn = document.getElementById("toggleCalendarBtn");
 
   if (!streakContainer) return;
 
@@ -323,10 +349,8 @@ window.renderStreakCalendar = function() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // TASK 5: Expand to 365 days
   const daysToShow = isCalendarExpandedUI ? 365 : 30;
 
-  // Generate days
   for (let i = daysToShow - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
@@ -358,14 +382,11 @@ window.renderStreakCalendar = function() {
     streakContainer.appendChild(wrapper);
   }
 
-  // Scroll to end (today)
   setTimeout(() => {
     streakContainer.scrollLeft = streakContainer.scrollWidth;
   }, 100);
 
-  // Update Stats (Recalculate logic here to be safe or rely on streak.js if helper exists)
-  // We'll reimplement calculateStreakStats logic locally to ensure independence
-
+  // Logic for Streak Stats (reproduced to ensure autonomy)
   if (currentStreakEl || maxStreakEl) {
       const sorted = [...streakDays].sort();
       let current = 0;
@@ -387,7 +408,6 @@ window.renderStreakCalendar = function() {
       }
       if (temp > max) max = temp;
 
-      // Current Streak
       const todayStr = new Date().toISOString().split("T")[0];
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
@@ -410,14 +430,11 @@ window.renderStreakCalendar = function() {
   }
 };
 
-// Bind Calendar Toggle
 function bindCalendarToggle() {
     const toggleBtn = document.getElementById("toggleCalendarBtn");
     if (toggleBtn) {
-        // Remove old listeners by cloning
         const newBtn = toggleBtn.cloneNode(true);
         toggleBtn.parentNode.replaceChild(newBtn, toggleBtn);
-
         newBtn.addEventListener("click", () => {
             isCalendarExpandedUI = !isCalendarExpandedUI;
             newBtn.textContent = isCalendarExpandedUI ? "COLLAPSE" : "EXPAND";
@@ -432,7 +449,6 @@ const notesTextarea = document.getElementById('systemNotes');
 const notesPanel = document.querySelector('.notes-panel');
 
 if (notesPanel && notesTextarea) {
-  // Check if button exists, if not create it
   let toggleBtn = notesPanel.querySelector('#toggleNotesBtn');
   if (!toggleBtn) {
     toggleBtn = document.createElement('button');
@@ -458,7 +474,6 @@ if (notesPanel && notesTextarea) {
     }
   };
 
-  // Persistence
   const savedNotes = localStorage.getItem('solo_system_notes');
   if (savedNotes) notesTextarea.value = savedNotes;
   
@@ -468,55 +483,45 @@ if (notesPanel && notesTextarea) {
 }
 
 /* ================================
-   ISSUE 11: QUEST SYSTEM OVERRIDES
-   Cadence, Importance, Penalty Logic
+   ISSUE 11 & GROUP D: QUEST SYSTEM
+   Cadence, Importance, Penalty Overrides
 ================================ */
 
-// --- Helper: Quest Visibility ---
 function isQuestVisible(quest) {
   const today = new Date();
   today.setHours(0,0,0,0);
 
-  // Default to Daily if undefined
   const cadence = quest.cadence || 'daily';
 
-  if (cadence === 'daily') {
-    return true;
-  }
+  if (cadence === 'daily') return true;
 
   if (cadence === 'alternate') {
-    if (!quest.createdDate) return true; // Fallback
+    if (!quest.createdDate) return true;
     const created = new Date(quest.createdDate);
     created.setHours(0,0,0,0);
-
     const diffTime = Math.abs(today - created);
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
     return diffDays > 0 && diffDays % 2 !== 0;
   }
 
   if (cadence === 'specific') {
     if (!quest.targetDate) return false;
     const target = new Date(quest.targetDate);
-    target.setHours(0,0,0,0); // compare dates only
-
+    target.setHours(0,0,0,0);
     if (today < target) return false;
     if (today.getTime() === target.getTime()) return true;
-
     if (quest.repeatMode === 'daily') return true;
     if (quest.repeatMode === 'alternate') {
        const diffTime = Math.abs(today - target);
        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
        return diffDays > 0 && diffDays % 2 !== 0;
     }
-
-    return false; // One-time quest, passed date
+    return false;
   }
-
   return true;
 }
 
-// --- Override: Render Quests (XSS FIX) ---
+// --- Override: Render Quests ---
 window.renderQuests = function() {
   const dailyList = document.getElementById("dailyList");
   const questCount = document.getElementById("questCount");
@@ -524,7 +529,6 @@ window.renderQuests = function() {
   if (!dailyList) return;
   dailyList.innerHTML = "";
 
-  // Filter visible quests
   const visibleQuests = dailyQuests.map((q, i) => ({...q, originalIndex: i}))
                                    .filter(q => isQuestVisible(q));
 
@@ -532,31 +536,34 @@ window.renderQuests = function() {
     const div = document.createElement("div");
     div.className = "quest-item";
 
-    // Importance Styling
+    // Importance Styling (Group D)
     if (quest.importance === 'important') div.classList.add('quest-important');
     if (quest.importance === 'critical') div.classList.add('quest-critical');
 
     if (quest.completed) div.classList.add("completed");
 
-    // SAFE RENDERING (textContent)
     div.innerHTML = `
       <div class="quest-info">
         <span class="quest-name"></span>
-        <span class="quest-reward">+1 ${quest.stat}</span>
+        <span class="quest-reward"></span>
       </div>
       ${quest.cadence === 'alternate' ? '<span class="quest-tag">ALT</span>' : ''}
       ${quest.cadence === 'specific' ? '<span class="quest-tag">DATE</span>' : ''}
     `;
 
-    // Inject safely
+    // Safe Text
     div.querySelector('.quest-name').textContent = quest.name;
 
-    // Click to complete
+    // Logic: Importance Reward Display (Visual Only)
+    let rewardText = `+1 ${quest.stat}`;
+    if (quest.importance === 'important') rewardText = `+2 ${quest.stat}`;
+    if (quest.importance === 'critical') rewardText = `+3 ${quest.stat}`;
+    div.querySelector('.quest-reward').textContent = rewardText;
+
     div.addEventListener("click", (e) => {
         completeQuest(quest.originalIndex);
     });
 
-    // Context menu / Long press for Edit
     div.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         openQuestModal(quest.originalIndex);
@@ -570,8 +577,72 @@ window.renderQuests = function() {
   }
 };
 
-// --- Override: Open Quest Modal (Inject Inputs) ---
-const originalOpenQuestModal = window.openQuestModal;
+// --- Override: Complete Quest (Group D Logic) ---
+window.completeQuest = function(index) {
+  const quest = dailyQuests[index];
+  if (!quest || quest.completed) return;
+
+  quest.completed = true;
+
+  if (typeof isSuppressed === 'function' && isSuppressed()) {
+      console.log("Stat Gain Blocked: Suppression Active");
+  } else {
+      const statKey = quest.stat.toLowerCase();
+      // Apply Importance Logic to Stats (Reward)
+      let gain = 1;
+      if (quest.importance === 'important') gain = 2;
+      if (quest.importance === 'critical') gain = 3;
+
+      player.stats[statKey] += gain;
+  }
+
+  // XP Gain remains FIXED per quest (20 XP) to obey "Daily XP envelope remains FIXED"
+  // "NO visible multipliers"
+  gainXP(20);
+
+  saveQuests();
+  savePlayer(); // Stats updated
+  if (typeof updateUI === 'function') updateUI();
+  if (typeof renderQuests === 'function') renderQuests();
+  if (typeof checkStreak === 'function') checkStreak();
+};
+
+// --- Override: Apply Daily Penalty (Group D Logic) ---
+window.applyDailyPenalty = function() {
+  let penaltyApplied = false;
+
+  if (typeof dailyQuests !== 'undefined') {
+      dailyQuests.forEach(q => {
+        if (isQuestVisible(q) && !q.completed) {
+          const statKey = q.stat.toLowerCase();
+
+          // Apply Importance Logic to Stats (Penalty)
+          let loss = 1;
+          if (q.importance === 'important') loss = 2;
+          if (q.importance === 'critical') loss = 3;
+
+          if (player.stats[statKey] > 0) {
+            player.stats[statKey] = Math.max(0, player.stats[statKey] - loss);
+            penaltyApplied = true;
+          }
+          // XP Penalty (Standard -10, Fixed)
+          gainXP(-10);
+        }
+      });
+  }
+
+  if (penaltyApplied) {
+    savePlayer();
+    updateUI();
+
+    const todayStr = new Date().toDateString();
+    localStorage.setItem('solo_last_penalty_date', todayStr);
+
+    const penaltyModal = document.getElementById('penaltyModal');
+    if (penaltyModal) penaltyModal.classList.remove('hidden');
+  }
+};
+
 window.openQuestModal = function(index) {
   const modal = document.getElementById("questModal");
   const input = document.getElementById("editQuestInput");
@@ -583,7 +654,6 @@ window.openQuestModal = function(index) {
   editingQuestIndex = index;
   modal.classList.remove("hidden");
 
-  // Inject new UI if missing
   let extraControls = document.getElementById('questExtraControls');
   if (!extraControls) {
     extraControls = document.createElement('div');
@@ -617,11 +687,9 @@ window.openQuestModal = function(index) {
         </select>
       </div>
     `;
-    // Insert before buttons
     const buttons = modal.querySelector('.modal-buttons');
     modal.querySelector('.modal-content').insertBefore(extraControls, buttons);
 
-    // Toggle Date Input
     const cadenceSelect = document.getElementById('questCadence');
     cadenceSelect.onchange = () => {
       document.getElementById('questDateContainer').style.display =
@@ -629,7 +697,6 @@ window.openQuestModal = function(index) {
     };
   }
 
-  // Populate Fields
   const importanceSel = document.getElementById('questImportance');
   const cadenceSel = document.getElementById('questCadence');
   const dateInput = document.getElementById('questTargetDate');
@@ -640,31 +707,25 @@ window.openQuestModal = function(index) {
     modalTitle.textContent = "NEW QUEST";
     input.value = "";
     statSelect.style.display = "block";
-
-    // Defaults
     importanceSel.value = 'normal';
     cadenceSel.value = 'daily';
     dateInput.value = '';
     repeatSel.value = 'none';
     dateContainer.style.display = 'none';
-
     if (document.getElementById("deleteQuest")) document.getElementById("deleteQuest").style.display = "none";
   } else {
     const q = dailyQuests[index];
     modalTitle.textContent = "EDIT QUEST";
     input.value = q.name;
     statSelect.style.display = "none";
-
     importanceSel.value = q.importance || 'normal';
     cadenceSel.value = q.cadence || 'daily';
     dateInput.value = q.targetDate || '';
     repeatSel.value = q.repeatMode || 'none';
     dateContainer.style.display = q.cadence === 'specific' ? 'block' : 'none';
-
     if (document.getElementById("deleteQuest")) document.getElementById("deleteQuest").style.display = "block";
   }
 
-  // Bind Save
   const saveBtn = document.getElementById("saveQuestEdit");
   const newSaveBtn = saveBtn.cloneNode(true);
   saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
@@ -699,7 +760,6 @@ window.openQuestModal = function(index) {
       modal.classList.add("hidden");
   };
 
-  // Bind Delete
   const deleteBtn = document.getElementById("deleteQuest");
   if (deleteBtn) {
     const newDeleteBtn = deleteBtn.cloneNode(true);
@@ -720,36 +780,6 @@ window.openQuestModal = function(index) {
   }
 };
 
-// --- Override: Apply Daily Penalty ---
-window.applyDailyPenalty = function() {
-  let penaltyApplied = false;
-
-  if (typeof dailyQuests !== 'undefined') {
-      dailyQuests.forEach(q => {
-        if (isQuestVisible(q) && !q.completed) {
-          const statKey = q.stat.toLowerCase();
-          if (player.stats[statKey] > 0) {
-            player.stats[statKey]--;
-            penaltyApplied = true;
-          }
-          gainXP(-10);
-        }
-      });
-  }
-
-  if (penaltyApplied) {
-    savePlayer();
-    updateUI();
-
-    const todayStr = new Date().toDateString();
-    localStorage.setItem('solo_last_penalty_date', todayStr);
-
-    const penaltyModal = document.getElementById('penaltyModal');
-    if (penaltyModal) penaltyModal.classList.remove('hidden');
-  }
-};
-
-// --- Override: Reset Daily Completion ---
 window.resetDailyCompletion = function() {
   if (typeof dailyQuests !== 'undefined') {
       dailyQuests.forEach(q => {
@@ -765,7 +795,6 @@ window.resetDailyCompletion = function() {
 ================================ */
 
 function updateUI() {
-  // Update Player Level/XP
   const levelCenter = document.getElementById('levelCenter');
   const levelTextInline = document.getElementById('levelTextInline');
   const xpText = document.getElementById('xpText');
@@ -787,7 +816,6 @@ function updateUI() {
     xpRing.style.strokeDashoffset = offset;
   }
   
-  // Stats
   const stats = ['str', 'agi', 'int', 'vit', 'will'];
   stats.forEach(stat => {
     const val = player.stats[stat] || 0;
@@ -801,7 +829,6 @@ function updateUI() {
     }
   });
   
-  // Title & Rank
   const title = getTitle(player.level);
   const playerTitle = document.getElementById('playerTitle');
   const titleMeta = document.getElementById('titleMeta');
@@ -822,21 +849,43 @@ function updateUI() {
     rankText.innerHTML = `Rank ${rank} · Level <span>${player.level}</span>`;
   }
   
-  // Tiers
-  const tier = getTier();
+  // Tiers (Group A Logic)
+  // Apply specific classes based on Level
   document.body.className = '';
-  if (tier === 3) {
-    document.body.classList.add('tier-3');
-  } else if (tier === 2) {
-    document.body.classList.add('tier-2');
-  } else {
-    document.body.classList.add('tier-1');
-    if (player.level >= 71) document.body.classList.add('tier-1c');
-    else if (player.level >= 50) document.body.classList.add('tier-1b');
-    else document.body.classList.add('tier-1a');
-  }
+  const { tier, sub } = getTierDetails();
+
+  // Base classes for CSS inheritance
+  if (tier >= 1) document.body.classList.add('tier-1');
+  if (tier >= 2) document.body.classList.add('tier-2');
+  if (tier >= 3) document.body.classList.add('tier-3');
   
+  // Sub-tier classes (Explicit)
+  if (tier === 1) {
+    if (sub === 'c') document.body.classList.add('tier-1c');
+    else if (sub === 'b') document.body.classList.add('tier-1b');
+    else if (sub === 'a') document.body.classList.add('tier-1a');
+  }
+
   updateSystemMessage();
+}
+
+/* ================================
+   COSMIC STARS SYSTEM
+================================ */
+function initCosmicStars() {
+  const container = document.getElementById('cosmic-stars');
+  if (!container) return;
+  container.innerHTML = '';
+
+  for (let i = 0; i < 40; i++) {
+    const star = document.createElement('div');
+    star.className = 'cosmic-star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.animationDelay = (Math.random() * 20) + 's';
+    star.style.opacity = Math.random() * 0.5 + 0.2;
+    container.appendChild(star);
+  }
 }
 
 /* ================================
@@ -845,9 +894,10 @@ function updateUI() {
 document.addEventListener('DOMContentLoaded', () => {
   updateUI();
   initParticleSystem();
+  initCosmicStars();
   if (typeof renderQuests === 'function') renderQuests();
-  bindCalendarToggle(); // Ensure toggle is bound
-  if (typeof renderStreakCalendar === 'function') renderStreakCalendar(); // Force render
+  bindCalendarToggle();
+  if (typeof renderStreakCalendar === 'function') renderStreakCalendar();
 });
 
 // --- CRITICAL OVERRIDE: runDailySystemOnce ---
