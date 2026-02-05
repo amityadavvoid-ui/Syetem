@@ -47,7 +47,7 @@ function spawnParticle() {
   particle.className = 'crystal-particle';
   
   // Randomize size
-  const size = Math.random() * 3 + 2; // 2px to 5px
+  const size = Math.random() * 4 + 3; // 3px to 7px (Enhanced Visibility)
   particle.style.width = size + 'px';
   particle.style.height = size + 'px';
 
@@ -62,13 +62,13 @@ function spawnParticle() {
 
   if (tier === 3) { // Grim Reaper: Bright, ceremonial, authoritative
     duration = 15000; // 15s (was 20s)
-    maxOpacity = 0.9; // Brighter
+    maxOpacity = 1.0; // Maximum visibility
   } else if (tier === 2) { // Shadow Monarch: Darker, heavy
     duration = 12000; // 12s (was 15s)
-    maxOpacity = 0.7;
+    maxOpacity = 0.9;
   } else { // Tier 1: Faint, sparse
     duration = 10000; // 10s (was 12s)
-    maxOpacity = 0.5;
+    maxOpacity = 0.8; // Increased from 0.5 for visibility
   }
 
   // Initial state
