@@ -1,6 +1,6 @@
 /* ================================
-   UI.JS – FULL IMPLEMENTATION
-   System Repair: Particles, Interference, Calendar, Tiers
+   UI.JS – SYSTEM INTERFACE CONTROLLER
+   System Repair & Enhancements
 ================================ */
 
 /* ================================
@@ -107,17 +107,7 @@ function animateParticles(timestamp) {
     // Start at -15vh, End at 115vh (total 130vh travel)
     const travelDist = 130;
     const progress = elapsed / p.duration;
-    const currentBottom = -15 + (progress * travelDist);
 
-    p.el.style.opacity = currentOpacity;
-    // We use 'bottom' in style or transform translateY?
-    // spawnParticle sets 'bottom: -15vh'.
-    // Better to use transform for performance.
-    // Let's assume CSS sets `bottom: -15vh` as base, and we translate UP.
-    // Actually, `spawnParticle` sets `bottom: -15vh`.
-    // Let's just update `transform: translateY(...)`.
-    // Moving UP means negative Y.
-    // Total distance 130vh.
     const translateY = -(progress * 130);
     p.el.style.transform = `translateY(${translateY}vh)`;
   }
@@ -126,13 +116,12 @@ function animateParticles(timestamp) {
 }
 
 function initParticleSystem() {
+  const container = document.getElementById('bgParticles');
+  if (container) container.innerHTML = '';
+
   requestAnimationFrame(animateParticles);
 
   setInterval(() => {
-    // Tier-based spawn rate
-    // T1: faint, sparse (lower rate)
-    // T2: heavier (higher rate)
-    // T3: ceremonial (medium rate but impactful)
     const tier = getTier();
     let chance = 0.3;
     if (tier === 1) chance = 0.2;
@@ -164,7 +153,8 @@ function logInterference(types) {
   });
   
   localStorage.setItem('solo_interference_log', JSON.stringify(log));
-  updateSystemMessage();
+  updateSystemMessage(); // Update panel immediately
+  showInterferenceConfirmation(); // Show dedicated modal
 }
 
 function hasInterferenceToday() {
@@ -199,6 +189,7 @@ if (btnInterference) {
   };
 }
 
+// Bind Save button in Selection Modal
 const saveInterferenceBtn = document.getElementById('saveInterference');
 if (saveInterferenceBtn) {
   saveInterferenceBtn.onclick = () => {
@@ -207,14 +198,12 @@ if (saveInterferenceBtn) {
     
     if (types.length > 0) {
       logInterference(types);
-      showInterferenceConfirmation();
     }
     
-    // Clear checkboxes
+    // Clear and close
     document.querySelectorAll('#interferenceList input[type="checkbox"]').forEach(cb => {
       cb.checked = false;
     });
-    
     const modal = document.getElementById('interferenceModal');
     if (modal) modal.classList.add('hidden');
   };
@@ -266,74 +255,168 @@ function updateSystemMessage() {
 
 function updateUnknownProgress() {
   const unknownProgress = document.getElementById('unknownProgress');
-  const unknownProgressValue = document.getElementById('unknownProgressValue');
+  const unknownValue = document.getElementById('unknownProgressValue');
   const shadowProgress = document.getElementById('shadowProgress');
   const grimProgress = document.getElementById('grimProgress');
-  const grimProgressValue = document.getElementById('grimProgressValue');
+  const grimValue = document.getElementById('grimProgressValue');
   
   if (!unknownProgress || !shadowProgress || !grimProgress) return;
-  
+
   const level = player.level;
   
-  // Shadow Monarch progress (0-100)
+  // 1. Shadow Monarch Track (0-100)
   if (level < 100) {
     unknownProgress.style.display = 'block';
     shadowProgress.style.display = 'none';
     
-    const progress = Math.min(level, 100);
-    const percentage = (progress / 100 * 100).toFixed(1);
-    if (unknownProgressValue) {
-      unknownProgressValue.textContent = `Progress: ${percentage}%`;
+    // Remove "locked" text behavior via CSS classes or text content
+    unknownProgress.classList.remove('revealed');
+    if (unknownValue) {
+      const pct = Math.min((level / 100) * 100, 100).toFixed(1);
+      unknownValue.textContent = `Progress: ${pct}%`;
     }
+    const label = unknownProgress.querySelector('.locked-label');
+    if (label) label.style.visibility = 'hidden';
+
   } else {
     unknownProgress.style.display = 'none';
     shadowProgress.style.display = 'block';
   }
+
+  // 2. Grim Reaper Track (100-150)
+  grimProgress.style.display = 'block';
   
-  // Grim Reaper progress (100-150)
-  if (level < 100) {
-    grimProgress.style.display = 'none';
-  } else if (level < 150) {
-    grimProgress.style.display = 'block';
+  if (level < 150) {
+    // Not revealed
     grimProgress.classList.add('locked');
-    
-    const progress = level - 100;
-    const percentage = (progress / 50 * 100).toFixed(1);
-    if (grimProgressValue) {
-      grimProgressValue.textContent = `Alignment Drift: ${percentage}%`;
+    if (grimValue) {
+      const prog = Math.max(0, level - 100);
+      const pct = Math.min((prog / 50) * 100, 100).toFixed(1);
+      grimValue.textContent = `Alignment Drift: ${pct}%`;
     }
+    const label = grimProgress.querySelector('.locked-label');
+    if (label) label.style.visibility = 'hidden';
   } else {
     grimProgress.style.display = 'block';
     grimProgress.classList.remove('locked');
-    if (grimProgressValue) {
-      grimProgressValue.textContent = 'Authority Recognized';
+    if (grimValue) {
+      grimValue.textContent = 'Authority Recognized';
     }
+    const label = grimProgress.querySelector('.locked-label');
+    if (label) label.style.visibility = 'visible';
+    if (label) label.textContent = 'GRIM REAPER';
   }
 }
 
 /* ================================
-   ISSUE 8/4: CALENDAR EXPAND & NOTES
+   ISSUE 7 & 8: CALENDAR & NOTES (ORIGIN UPGRADE)
 ================================ */
 
-// Notes Expand
-let notesExpanded = false;
+// Override renderStreakCalendar from streak.js explicitly to ensure functionality
+let isCalendarExpandedUI = false; // Internal UI state
+
+window.renderStreakCalendar = function() {
+  const streakContainer = document.getElementById("streakCalendar");
+  const currentStreakEl = document.getElementById("currentStreak");
+  const maxStreakEl = document.getElementById("maxStreak");
+
+  if (!streakContainer) return;
+
+  const STREAK_KEY = "solo_streak_days";
+  const streakDays = JSON.parse(localStorage.getItem(STREAK_KEY)) || [];
+
+  streakContainer.innerHTML = "";
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // TASK 5: Expand to 365 days
+  const daysToShow = isCalendarExpandedUI ? 365 : 30;
+
+  // Generate days
+  for (let i = daysToShow - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const dayStr = d.toISOString().split("T")[0];
+    const dayNum = d.getDate();
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'narrow' });
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "calendar-day-wrapper";
+
+    const label = document.createElement("div");
+    label.className = "calendar-day-label";
+    label.textContent = dayName;
+
+    const dayEl = document.createElement("div");
+    dayEl.className = "calendar-day";
+    dayEl.textContent = dayNum;
+
+    if (streakDays.includes(dayStr)) {
+      dayEl.classList.add("completed");
+    }
+
+    if (d.getTime() === today.getTime()) {
+      dayEl.classList.add("today");
+    }
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(dayEl);
+    streakContainer.appendChild(wrapper);
+  }
+
+  // Scroll to end (today)
+  setTimeout(() => {
+    streakContainer.scrollLeft = streakContainer.scrollWidth;
+  }, 100);
+
+  // Simple stats update if elements exist
+  if (currentStreakEl) {
+     // We leave complex streak calc to streak.js if it exists, or display current
+     // This function mainly handles rendering the grid
+  }
+};
+
+// Bind Calendar Toggle
+function bindCalendarToggle() {
+    const toggleBtn = document.getElementById("toggleCalendarBtn");
+    if (toggleBtn) {
+        // Remove old listeners by cloning
+        const newBtn = toggleBtn.cloneNode(true);
+        toggleBtn.parentNode.replaceChild(newBtn, toggleBtn);
+
+        newBtn.addEventListener("click", () => {
+            isCalendarExpandedUI = !isCalendarExpandedUI;
+            newBtn.textContent = isCalendarExpandedUI ? "COLLAPSE" : "EXPAND";
+            // Toggle class on container for CSS
+            const streakCalendar = document.getElementById("streakCalendar");
+            if (streakCalendar) streakCalendar.classList.toggle('expanded');
+
+            renderStreakCalendar();
+        });
+    }
+}
+
+// NOTES
 const notesTextarea = document.getElementById('systemNotes');
 const notesPanel = document.querySelector('.notes-panel');
 
 if (notesPanel && notesTextarea) {
-  // Only add if not already present (check specific logic if needed, but safe here)
-  // Clean up previous buttons if any (simple implementation)
-  const existingBtn = notesPanel.querySelector('button.notes-toggle');
-  if (existingBtn) existingBtn.remove();
+  // Check if button exists, if not create it
+  let toggleBtn = notesPanel.querySelector('#toggleNotesBtn');
+  if (!toggleBtn) {
+    toggleBtn = document.createElement('button');
+    toggleBtn.id = 'toggleNotesBtn';
+    toggleBtn.textContent = 'EXPAND';
+    toggleBtn.style.width = 'auto';
+    toggleBtn.style.padding = '4px 8px';
+    toggleBtn.style.fontSize = '10px';
+    toggleBtn.style.marginTop = '8px';
+    toggleBtn.style.float = 'right';
+    notesPanel.appendChild(toggleBtn);
+  }
 
-  const toggleBtn = document.createElement('button');
-  toggleBtn.className = 'notes-toggle';
-  toggleBtn.textContent = 'EXPAND';
-  toggleBtn.style.width = 'auto';
-  toggleBtn.style.padding = '4px 8px';
-  toggleBtn.style.fontSize = '10px';
-  toggleBtn.style.marginTop = '8px';
-  
+  let notesExpanded = false;
   toggleBtn.onclick = () => {
     notesExpanded = !notesExpanded;
     if (notesExpanded) {
@@ -344,42 +427,315 @@ if (notesPanel && notesTextarea) {
       toggleBtn.textContent = 'EXPAND';
     }
   };
-  
-  notesPanel.appendChild(toggleBtn);
-  
+
+  // Persistence
   const savedNotes = localStorage.getItem('solo_system_notes');
-  if (savedNotes) {
-    notesTextarea.value = savedNotes;
-  }
+  if (savedNotes) notesTextarea.value = savedNotes;
   
   notesTextarea.addEventListener('input', () => {
     localStorage.setItem('solo_system_notes', notesTextarea.value);
   });
 }
 
-// Issue 4: Calendar Expand
-const toggleCalendarBtn = document.getElementById('toggleCalendarBtn');
-const streakCalendar = document.getElementById('streakCalendar');
+/* ================================
+   ISSUE 11: QUEST SYSTEM OVERRIDES (ORIGIN UPGRADE)
+   Cadence, Importance, Penalty Logic
+================================ */
 
-if (toggleCalendarBtn && streakCalendar) {
-  toggleCalendarBtn.onclick = () => {
-    // Toggle class
-    streakCalendar.classList.toggle('expanded');
+// --- Helper: Quest Visibility ---
+function isQuestVisible(quest) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
 
-    // Update button text
-    if (streakCalendar.classList.contains('expanded')) {
-      toggleCalendarBtn.textContent = 'COLLAPSE';
-    } else {
-      toggleCalendarBtn.textContent = 'EXPAND';
+  // Default to Daily if undefined
+  const cadence = quest.cadence || 'daily';
+
+  if (cadence === 'daily') {
+    return true;
+  }
+
+  if (cadence === 'alternate') {
+    if (!quest.createdDate) return true; // Fallback
+    const created = new Date(quest.createdDate);
+    created.setHours(0,0,0,0);
+
+    const diffTime = Math.abs(today - created);
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays > 0 && diffDays % 2 !== 0;
+  }
+
+  if (cadence === 'specific') {
+    if (!quest.targetDate) return false;
+    const target = new Date(quest.targetDate);
+    target.setHours(0,0,0,0); // compare dates only
+
+    if (today < target) return false;
+    if (today.getTime() === target.getTime()) return true;
+
+    if (quest.repeatMode === 'daily') return true;
+    if (quest.repeatMode === 'alternate') {
+       const diffTime = Math.abs(today - target);
+       const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+       return diffDays > 0 && diffDays % 2 !== 0;
     }
-  };
+
+    return false; // One-time quest, passed date
+  }
+
+  return true;
 }
 
+// --- Override: Render Quests (XSS FIX) ---
+window.renderQuests = function() {
+  const dailyList = document.getElementById("dailyList");
+  const questCount = document.getElementById("questCount");
+
+  if (!dailyList) return;
+  dailyList.innerHTML = "";
+
+  // Filter visible quests
+  const visibleQuests = dailyQuests.map((q, i) => ({...q, originalIndex: i}))
+                                   .filter(q => isQuestVisible(q));
+
+  visibleQuests.forEach((quest) => {
+    const div = document.createElement("div");
+    div.className = "quest-item";
+
+    // Importance Styling (Compatible with daily.js and origin CSS)
+    if (quest.importance === 'Important' || quest.importance === 'important') div.classList.add('quest-important');
+    if (quest.importance === 'Critical' || quest.importance === 'critical') div.classList.add('quest-critical');
+
+    if (quest.completed) div.classList.add("completed");
+
+    // SAFE RENDERING (textContent)
+    div.innerHTML = `
+      <div class="quest-info">
+        <span class="quest-name"></span>
+        <span class="quest-reward">+1 ${quest.stat}</span>
+      </div>
+      ${quest.cadence === 'alternate' ? '<span class="quest-tag">ALT</span>' : ''}
+      ${quest.cadence === 'specific' ? '<span class="quest-tag">DATE</span>' : ''}
+    `;
+
+    // Inject safely
+    div.querySelector('.quest-name').textContent = quest.name;
+
+    // Click to complete
+    div.addEventListener("click", (e) => {
+        completeQuest(quest.originalIndex);
+    });
+
+    // Context menu / Long press for Edit
+    div.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        openQuestModal(quest.originalIndex);
+    });
+
+    dailyList.appendChild(div);
+  });
+
+  if (questCount) {
+      questCount.textContent = `Active Tasks: ${visibleQuests.length}`;
+  }
+};
+
+// --- Override: Open Quest Modal (Inject Inputs) ---
+const originalOpenQuestModal = window.openQuestModal;
+window.openQuestModal = function(index) {
+  const modal = document.getElementById("questModal");
+  const input = document.getElementById("editQuestInput");
+  const statSelect = document.getElementById("editQuestStat");
+  const modalTitle = document.getElementById("modalTitle");
+
+  if (!modal || !input) return;
+
+  editingQuestIndex = index;
+  modal.classList.remove("hidden");
+
+  // Inject new UI if missing
+  let extraControls = document.getElementById('questExtraControls');
+  if (!extraControls) {
+    extraControls = document.createElement('div');
+    extraControls.id = 'questExtraControls';
+    extraControls.style.marginBottom = '16px';
+    extraControls.innerHTML = `
+      <div style="margin-bottom:8px;">
+        <label style="color:#6c7a89; font-size:10px; display:block; margin-bottom:4px;">IMPORTANCE</label>
+        <select id="questImportance" style="width:100%; background:rgba(0,0,0,0.4); color:#fff; padding:8px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;">
+          <option value="Normal">Normal</option>
+          <option value="Important">Important</option>
+          <option value="Critical">Critical</option>
+        </select>
+      </div>
+      <div style="margin-bottom:8px;">
+        <label style="color:#6c7a89; font-size:10px; display:block; margin-bottom:4px;">CADENCE</label>
+        <select id="questCadence" style="width:100%; background:rgba(0,0,0,0.4); color:#fff; padding:8px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;">
+          <option value="daily">Daily</option>
+          <option value="alternate">Alternate Day</option>
+          <option value="specific">Specific Date</option>
+        </select>
+      </div>
+      <div id="questDateContainer" style="display:none; margin-bottom:8px;">
+        <label style="color:#6c7a89; font-size:10px; display:block; margin-bottom:4px;">TARGET DATE</label>
+        <input type="date" id="questTargetDate" style="width:100%; background:rgba(0,0,0,0.4); color:#fff; padding:8px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;">
+        <label style="color:#6c7a89; font-size:10px; display:block; margin-top:4px; margin-bottom:4px;">REPEAT AFTER DATE?</label>
+        <select id="questRepeat" style="width:100%; background:rgba(0,0,0,0.4); color:#fff; padding:8px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;">
+          <option value="none">None (One-time)</option>
+          <option value="daily">Daily</option>
+          <option value="alternate">Alternate Day</option>
+        </select>
+      </div>
+    `;
+    // Insert before buttons
+    const buttons = modal.querySelector('.modal-buttons');
+    modal.querySelector('.modal-content').insertBefore(extraControls, buttons);
+
+    // Toggle Date Input
+    const cadenceSelect = document.getElementById('questCadence');
+    cadenceSelect.onchange = () => {
+      document.getElementById('questDateContainer').style.display =
+        cadenceSelect.value === 'specific' ? 'block' : 'none';
+    };
+  }
+
+  // Populate Fields
+  const importanceSel = document.getElementById('questImportance');
+  const cadenceSel = document.getElementById('questCadence');
+  const dateInput = document.getElementById('questTargetDate');
+  const repeatSel = document.getElementById('questRepeat');
+  const dateContainer = document.getElementById('questDateContainer');
+
+  if (index === -1) {
+    modalTitle.textContent = "NEW QUEST";
+    input.value = "";
+    statSelect.style.display = "block";
+
+    // Defaults
+    importanceSel.value = 'Normal';
+    cadenceSel.value = 'daily';
+    dateInput.value = '';
+    repeatSel.value = 'none';
+    dateContainer.style.display = 'none';
+
+    if (document.getElementById("deleteQuest")) document.getElementById("deleteQuest").style.display = "none";
+  } else {
+    const q = dailyQuests[index];
+    modalTitle.textContent = "EDIT QUEST";
+    input.value = q.name;
+    statSelect.style.display = "none";
+
+    importanceSel.value = q.importance || 'Normal';
+    cadenceSel.value = q.cadence || 'daily';
+    dateInput.value = q.targetDate || '';
+    repeatSel.value = q.repeatMode || 'none';
+    dateContainer.style.display = q.cadence === 'specific' ? 'block' : 'none';
+
+    if (document.getElementById("deleteQuest")) document.getElementById("deleteQuest").style.display = "block";
+  }
+
+  // Bind Save
+  const saveBtn = document.getElementById("saveQuestEdit");
+  const newSaveBtn = saveBtn.cloneNode(true);
+  saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+  newSaveBtn.onclick = () => {
+      const name = input.value.trim();
+      if (!name) return;
+
+      const newQuestData = {
+          name,
+          importance: importanceSel.value,
+          cadence: cadenceSel.value,
+          targetDate: dateInput.value,
+          repeatMode: repeatSel.value,
+          createdDate: (index === -1 || !dailyQuests[index].createdDate) ? new Date().toISOString() : dailyQuests[index].createdDate
+      };
+
+      if (index === -1) {
+          const stat = statSelect.value;
+          dailyQuests.push({
+              ...newQuestData,
+              stat: stat,
+              completed: false
+          });
+      } else {
+          const q = dailyQuests[index];
+          Object.assign(q, newQuestData);
+      }
+
+      saveQuests();
+      renderQuests();
+      modal.classList.add("hidden");
+  };
+
+  // Bind Delete
+  const deleteBtn = document.getElementById("deleteQuest");
+  if (deleteBtn) {
+    const newDeleteBtn = deleteBtn.cloneNode(true);
+    deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+    newDeleteBtn.onclick = () => {
+      if(index !== -1) {
+          dailyQuests.splice(index, 1);
+          saveQuests();
+          renderQuests();
+      }
+      modal.classList.add("hidden");
+    };
+  }
+
+  const cancelBtn = document.getElementById("cancelQuestEdit");
+  if (cancelBtn) {
+    cancelBtn.onclick = () => modal.classList.add("hidden");
+  }
+};
+
+// --- Override: Apply Daily Penalty ---
+window.applyDailyPenalty = function() {
+  let penaltyApplied = false;
+
+  if (typeof dailyQuests !== 'undefined') {
+      dailyQuests.forEach(q => {
+        if (isQuestVisible(q) && !q.completed) {
+          const statKey = q.stat.toLowerCase();
+          if (player.stats[statKey] > 0) {
+            player.stats[statKey]--;
+            penaltyApplied = true;
+          }
+          gainXP(-10);
+        }
+      });
+  }
+
+  if (penaltyApplied) {
+    savePlayer();
+    updateUI();
+
+    const todayStr = new Date().toDateString();
+    localStorage.setItem('solo_last_penalty_date', todayStr);
+
+    const penaltyModal = document.getElementById('penaltyModal');
+    if (penaltyModal) penaltyModal.classList.remove('hidden');
+  }
+};
+
+// --- Override: Reset Daily Completion ---
+window.resetDailyCompletion = function() {
+  if (typeof dailyQuests !== 'undefined') {
+      dailyQuests.forEach(q => {
+        q.completed = false;
+      });
+      saveQuests();
+      renderQuests();
+  }
+};
+
 /* ================================
-   MAIN UI UPDATE & ISSUE 5 (TIERS)
+   MAIN UI UPDATE
 ================================ */
 
 function updateUI() {
+  // Update Player Level/XP
   const levelCenter = document.getElementById('levelCenter');
   const levelTextInline = document.getElementById('levelTextInline');
   const xpText = document.getElementById('xpText');
@@ -390,7 +746,8 @@ function updateUI() {
   
   const needed = xpNeeded(player.level);
   if (xpText) {
-    xpText.textContent = `XP ${player.xp} / ${needed}`;
+    const pct = ((player.xp / needed) * 100).toFixed(1);
+    xpText.textContent = `XP ${player.xp} / ${needed} (${pct}%)`;
   }
   
   if (xpRing) {
@@ -400,6 +757,7 @@ function updateUI() {
     xpRing.style.strokeDashoffset = offset;
   }
   
+  // Stats
   const stats = ['str', 'agi', 'int', 'vit', 'will'];
   stats.forEach(stat => {
     const val = player.stats[stat] || 0;
@@ -413,6 +771,7 @@ function updateUI() {
     }
   });
   
+  // Title & Rank
   const title = getTitle(player.level);
   const playerTitle = document.getElementById('playerTitle');
   const titleMeta = document.getElementById('titleMeta');
@@ -503,12 +862,12 @@ function initCosmicStars() {
 /* ================================
    INITIALIZATION
 ================================ */
-
 document.addEventListener('DOMContentLoaded', () => {
   updateUI();
   initParticleSystem();
   initCosmicStars();
   
+  // Clean up old penalty flags if today
   const todayStr = new Date().toDateString();
   const lastPenaltyDate = localStorage.getItem('solo_last_penalty_date');
   
@@ -526,4 +885,29 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   }
+
+  // Bind Calendar (Origin Style)
+  bindCalendarToggle();
+  if (typeof renderStreakCalendar === 'function') renderStreakCalendar();
+  if (typeof renderQuests === 'function') renderQuests();
 });
+
+// --- CRITICAL OVERRIDE: runDailySystemOnce ---
+window.runDailySystemOnce = function() {
+  const DAY_KEY = "solo_last_day";
+  const today = new Date().toDateString();
+  const lastDay = localStorage.getItem(DAY_KEY);
+
+  const suppressionDate = localStorage.getItem("solo_suppression_date");
+  if (suppressionDate && suppressionDate !== today) {
+      localStorage.removeItem("solo_suppression_date");
+  }
+
+  if (lastDay !== today) {
+    applyDailyPenalty();
+    resetDailyCompletion();
+    if (typeof checkForSuppression === 'function') checkForSuppression();
+
+    localStorage.setItem(DAY_KEY, today);
+  }
+};
