@@ -1,6 +1,7 @@
 /* ================================
    UI.JS – SYSTEM INTERFACE CONTROLLER
    Overriding and Enhancing Core Systems
+   CRITICAL REPAIR - FINAL
 ================================ */
 
 /* ================================
@@ -51,23 +52,23 @@ function spawnParticle() {
   particle.style.height = size + 'px';
 
   // Origin: BELOW the viewport
+  // Strict requirement: "Particles must originate BELOW the viewport"
   particle.style.left = Math.random() * 100 + '%';
   particle.style.bottom = '-10vh';
   
   // Tier-based settings
-  let duration, maxOpacity, speedMultiplier;
+  // Requirement: "Motion slightly faster... Glow intensity MUST exceed motion speed"
+  let duration, maxOpacity;
+
   if (tier === 3) { // Grim Reaper: Bright, ceremonial, authoritative
-    duration = 20000;
-    maxOpacity = 0.8;
-    speedMultiplier = 0.5; // Slow rise
+    duration = 15000; // 15s (was 20s)
+    maxOpacity = 0.9; // Brighter
   } else if (tier === 2) { // Shadow Monarch: Darker, heavy
-    duration = 15000;
-    maxOpacity = 0.6;
-    speedMultiplier = 0.7;
+    duration = 12000; // 12s (was 15s)
+    maxOpacity = 0.7;
   } else { // Tier 1: Faint, sparse
-    duration = 12000;
-    maxOpacity = 0.4;
-    speedMultiplier = 1.0; // Faster
+    duration = 10000; // 10s (was 12s)
+    maxOpacity = 0.5;
   }
 
   // Initial state
@@ -102,8 +103,10 @@ function spawnParticle() {
       currentOpacity = maxOpacity * (1 - (progress - 0.9) / 0.1);
     }
 
-    // Movement Logic: Rise across ENTIRE screen (100vh + buffer)
-    // Start at -10vh, move up by 120vh to clear top
+    // Movement Logic: Rise across ENTIRE screen
+    // Start at -10vh (bottom), move UP by 120vh.
+    // Final position relative to start: -120vh.
+    // Absolute position: bottom -10vh + 120vh = bottom 110vh (Above top).
     const moveY = -1 * (progress * 120);
 
     particle.style.opacity = currentOpacity;
@@ -129,7 +132,7 @@ function initParticleSystem() {
     if (Math.random() < spawnChance) {
       spawnParticle();
     }
-  }, 800);
+  }, 600); // Slightly faster spawn rate check
 }
 
 /* ================================
@@ -140,11 +143,11 @@ function initParticleSystem() {
 const DAILY_XP_ENVELOPE = 100;
 
 function calculateDailyXP() {
-    // 1. Get Active Quests (visible)
-    // We assume 'dailyQuests' is global from daily.js
+    // 1. Get Active Quests
+    // 'dailyQuests' is expected to be in the global scope from daily.js
     if (typeof dailyQuests === 'undefined') return;
 
-    // Filter to same logic as render (isQuestVisible is below)
+    // Filter to visible quests only
     const activeQuests = dailyQuests.filter(q => isQuestVisible(q));
     const activeCount = activeQuests.length;
 
@@ -171,7 +174,6 @@ function calculateDailyXP() {
 
     // 5. Final XP Target
     // XP = dailyEnvelope × efficiency
-    // Floor to integer
     const targetXP = Math.floor(DAILY_XP_ENVELOPE * efficiency);
 
     // 6. Incremental Grant
@@ -189,12 +191,16 @@ function calculateDailyXP() {
     const delta = targetXP - awarded;
 
     if (delta > 0) {
-        gainXP(delta);
-        localStorage.setItem('solo_daily_xp_awarded', awarded + delta);
+        // Use gainXP from core.js
+        if (typeof gainXP === 'function') {
+            gainXP(delta);
+            localStorage.setItem('solo_daily_xp_awarded', awarded + delta);
+        }
     }
 }
 
 // Override completeQuest from daily.js
+// We assign to window to ensure global access overrides
 window.completeQuest = function(index) {
   if (typeof dailyQuests === 'undefined') return;
   const quest = dailyQuests[index];
@@ -212,13 +218,15 @@ window.completeQuest = function(index) {
       }
   }
 
-  // XP Reward (Envelope System)
+  // XP Reward (Envelope System) - Replaces raw gainXP call
   calculateDailyXP();
 
-  saveQuests();
+  saveQuests(); // Assuming saveQuests is global from daily.js
   updateUI();
+
+  // Re-render to show completion state
   if (typeof renderQuests === 'function') renderQuests();
-  checkStreak();
+  checkStreak(); // Assuming checkStreak is global from daily.js
 };
 
 /* ================================
@@ -266,21 +274,21 @@ function hasInterferenceToday() {
 
 function showInterferenceConfirmation() {
   let modal = document.getElementById('dedicatedInterferenceModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'dedicatedInterferenceModal';
-    modal.className = 'modal';
-    modal.style.zIndex = '2000';
-    modal.innerHTML = `
+  if (modal) modal.remove(); // Remove existing if any
+
+  modal = document.createElement('div');
+  modal.id = 'dedicatedInterferenceModal';
+  modal.className = 'modal';
+  modal.style.zIndex = '2000';
+  modal.innerHTML = `
       <div class="modal-content" style="border-color: #ef4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);">
         <h3 style="color: #ef4444; margin-bottom: 10px;">INTERFERENCE LOGGED</h3>
         <p style="color: #cbd5e1; text-align: center; margin-bottom: 20px;">Day marked complete. No XP gained.</p>
-        <button id="dismissInterference" style="border-color: #ef4444; color: #ef4444;">ACKNOWLEDGE</button>
+        <button id="dismissInterference" style="width:100%; border-color: #ef4444; color: #ef4444;">ACKNOWLEDGE</button>
       </div>
     `;
-    document.body.appendChild(modal);
-    document.getElementById('dismissInterference').onclick = () => modal.remove();
-  }
+  document.body.appendChild(modal);
+  document.getElementById('dismissInterference').onclick = () => modal.remove();
 }
 
 // Bind Interference Buttons
@@ -294,7 +302,11 @@ if (btnInterference) {
 
 const saveInterferenceBtn = document.getElementById('saveInterference');
 if (saveInterferenceBtn) {
-  saveInterferenceBtn.onclick = () => {
+  // Clear old listener if possible (via cloning)
+  const newBtn = saveInterferenceBtn.cloneNode(true);
+  saveInterferenceBtn.parentNode.replaceChild(newBtn, saveInterferenceBtn);
+
+  newBtn.onclick = () => {
     const checkboxes = document.querySelectorAll('#interferenceList input[type="checkbox"]:checked');
     const types = Array.from(checkboxes).map(cb => cb.value);
     
@@ -321,9 +333,6 @@ window.renderStreakCalendar = function() {
 
   if (!streakContainer) return;
 
-  const STREAK_KEY = "dailyStreaks"; // Use the key from daily.js logic (checked in completeQuest)
-  // Wait, daily.js usually uses "dailyStreaks". ui.js earlier used "solo_streak_days".
-  // Let's stick to what completeQuest updates: "dailyStreaks".
   const streaks = JSON.parse(localStorage.getItem("dailyStreaks")) || {};
 
   streakContainer.innerHTML = "";
@@ -344,7 +353,7 @@ window.renderStreakCalendar = function() {
   for (let i = daysToShow - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const dayStr = d.toDateString(); // Matches dailyStreaks key
+    const dayStr = d.toDateString();
     const dayNum = d.getDate();
     const dayName = d.toLocaleDateString('en-US', { weekday: 'narrow' });
 
@@ -378,19 +387,13 @@ window.renderStreakCalendar = function() {
         streakContainer.scrollLeft = streakContainer.scrollWidth;
       }, 100);
   } else {
-      // In expanded view, maybe scroll to bottom?
+      // In expanded view, let it flow naturally or scroll to bottom
       setTimeout(() => {
         streakContainer.scrollTop = streakContainer.scrollHeight;
       }, 100);
   }
 
-  // Calculate Stats (Basic)
-  // ... (Simplified logic for display) ...
-  // We can just count current streak here or assume streak.js handles it.
-  // The original ui.js had some logic. Let's preserve basic display updates if elements exist.
-  // Actually, let's defer to streak.js if it exists, but ui.js overrides it.
-  // We need to calculate it.
-
+  // Stats (Basic recalculation to ensure UI reflects data)
   if (currentStreakEl || maxStreakEl) {
       const sortedDates = Object.keys(streaks).map(d => new Date(d).getTime()).sort((a,b) => a-b);
       let current = 0;
@@ -521,7 +524,6 @@ function updateUI() {
   updateSystemMessage();
 }
 
-// Strict System Message
 function updateSystemMessage() {
   const messageEl = document.getElementById('systemMessage');
   const badgeEl = document.getElementById('systemStatusBadge');
@@ -554,7 +556,6 @@ function updateSystemMessage() {
 }
 
 function updateUnknownProgress() {
-    // ... (Existing logic for progress reveals) ...
     const unknownProgress = document.getElementById('unknownProgress');
     const unknownValue = document.getElementById('unknownProgressValue');
     const shadowProgress = document.getElementById('shadowProgress');
@@ -596,45 +597,10 @@ function updateUnknownProgress() {
     }
 }
 
-// NOTES
-const notesTextarea = document.getElementById('systemNotes');
-const notesPanel = document.querySelector('.notes-panel');
+/* ================================
+   QUEST HELPERS (VISIBILITY & RENDERING)
+================================ */
 
-if (notesPanel && notesTextarea) {
-  let toggleBtn = notesPanel.querySelector('#toggleNotesBtn');
-  if (!toggleBtn) {
-    toggleBtn = document.createElement('button');
-    toggleBtn.id = 'toggleNotesBtn';
-    toggleBtn.textContent = 'EXPAND';
-    toggleBtn.style.width = 'auto';
-    toggleBtn.style.padding = '4px 8px';
-    toggleBtn.style.fontSize = '10px';
-    toggleBtn.style.marginTop = '8px';
-    toggleBtn.style.float = 'right';
-    notesPanel.appendChild(toggleBtn);
-  }
-
-  let notesExpanded = false;
-  toggleBtn.onclick = () => {
-    notesExpanded = !notesExpanded;
-    if (notesExpanded) {
-      notesTextarea.style.height = '400px';
-      toggleBtn.textContent = 'COLLAPSE';
-    } else {
-      notesTextarea.style.height = '100px';
-      toggleBtn.textContent = 'EXPAND';
-    }
-  };
-
-  const savedNotes = localStorage.getItem('solo_system_notes');
-  if (savedNotes) notesTextarea.value = savedNotes;
-  
-  notesTextarea.addEventListener('input', () => {
-    localStorage.setItem('solo_system_notes', notesTextarea.value);
-  });
-}
-
-// QUEST HELPERS
 function isQuestVisible(quest) {
   const today = new Date();
   today.setHours(0,0,0,0);
@@ -669,6 +635,8 @@ window.renderQuests = function() {
   const questCount = document.getElementById("questCount");
 
   if (!dailyList || typeof dailyQuests === 'undefined') return;
+
+  // Wipe content to remove old listeners/elements
   dailyList.innerHTML = "";
 
   const visibleQuests = dailyQuests.map((q, i) => ({...q, originalIndex: i}))
@@ -691,12 +659,16 @@ window.renderQuests = function() {
       ${quest.cadence === 'specific' ? '<span class="quest-tag">DATE</span>' : ''}
     `;
 
+    // Safe text injection
     div.querySelector('.quest-name').textContent = quest.name;
 
-    div.addEventListener("click", () => {
+    // Click to complete
+    div.addEventListener("click", (e) => {
+        // Prevent triggering if selecting text or something (optional safety)
         completeQuest(quest.originalIndex);
     });
 
+    // Right click/Long press to edit
     div.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         openQuestModal(quest.originalIndex);
@@ -718,7 +690,9 @@ window.openQuestModal = function(index) {
 
   if (!modal || !input) return;
 
-  // ... (Ensure controls exist logic, same as previous) ...
+  modal.classList.remove("hidden");
+
+  // Ensure extra controls exist
   let extraControls = document.getElementById('questExtraControls');
   if (!extraControls) {
     extraControls = document.createElement('div');
@@ -728,9 +702,9 @@ window.openQuestModal = function(index) {
       <div style="margin-bottom:8px;">
         <label style="color:#6c7a89; font-size:10px; display:block; margin-bottom:4px;">IMPORTANCE</label>
         <select id="questImportance" style="width:100%; background:rgba(0,0,0,0.4); color:#fff; padding:8px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;">
-          <option value="normal">Normal</option>
-          <option value="important">Important</option>
-          <option value="critical">Critical</option>
+          <option value="normal">Normal (1.0x)</option>
+          <option value="important">Important (1.1x)</option>
+          <option value="critical">Critical (1.2x)</option>
         </select>
       </div>
       <div style="margin-bottom:8px;">
@@ -753,7 +727,7 @@ window.openQuestModal = function(index) {
       </div>
     `;
     const buttons = modal.querySelector('.modal-buttons');
-    modal.querySelector('.modal-content').insertBefore(extraControls, buttons);
+    if (buttons) modal.querySelector('.modal-content').insertBefore(extraControls, buttons);
 
     const cadenceSelect = document.getElementById('questCadence');
     cadenceSelect.onchange = () => {
@@ -812,6 +786,9 @@ window.openQuestModal = function(index) {
           dailyQuests.push({ ...newQuestData, stat: statSelect.value, completed: false });
       } else {
           Object.assign(dailyQuests[index], newQuestData);
+          if (dailyQuests[index].completed) {
+              dailyQuests[index].completed = false; // Reset on edit
+          }
       }
 
       saveQuests();
@@ -837,67 +814,45 @@ window.openQuestModal = function(index) {
   if (cancelBtn) cancelBtn.onclick = () => modal.classList.add("hidden");
 };
 
-// Daily Penalty Override
-window.applyDailyPenalty = function() {
-  let penaltyApplied = false;
-  if (typeof dailyQuests !== 'undefined') {
-      dailyQuests.forEach(q => {
-        if (isQuestVisible(q) && !q.completed) {
-          // Failure Logic: Decrease stat?
-          // Requirement: "Importance increases... penalty when incomplete"
-          // We will stick to -1 stat for now, maybe weighted later if requested,
-          // but Issue 2 focused on XP scaling.
-          // IMPORTANT: Do NOT subtract XP here, as envelope system handles it by NOT awarding XP.
-          const statKey = q.stat.toLowerCase();
-          if (player.stats[statKey] > 0) {
-            player.stats[statKey]--;
-            penaltyApplied = true;
-          }
-        }
-      });
+// NOTES SECTION (Minor UX)
+const notesTextarea = document.getElementById('systemNotes');
+const notesPanel = document.querySelector('.notes-panel');
+
+if (notesPanel && notesTextarea) {
+  let toggleBtn = notesPanel.querySelector('#toggleNotesBtn');
+  if (!toggleBtn) {
+    toggleBtn = document.createElement('button');
+    toggleBtn.id = 'toggleNotesBtn';
+    toggleBtn.textContent = 'EXPAND';
+    toggleBtn.style.width = 'auto';
+    toggleBtn.style.padding = '4px 8px';
+    toggleBtn.style.fontSize = '10px';
+    toggleBtn.style.marginTop = '8px';
+    toggleBtn.style.float = 'right';
+    notesPanel.appendChild(toggleBtn);
   }
 
-  if (penaltyApplied) {
-    savePlayer();
-    updateUI();
-    const todayStr = new Date().toDateString();
-    localStorage.setItem('solo_last_penalty_date', todayStr);
-    const penaltyModal = document.getElementById('penaltyModal');
-    if (penaltyModal) penaltyModal.classList.remove('hidden');
-  }
-};
+  let notesExpanded = false;
+  toggleBtn.onclick = () => {
+    notesExpanded = !notesExpanded;
+    if (notesExpanded) {
+      notesTextarea.style.height = '400px';
+      toggleBtn.textContent = 'COLLAPSE';
+    } else {
+      notesTextarea.style.height = '100px';
+      toggleBtn.textContent = 'EXPAND';
+    }
+  };
 
-window.resetDailyCompletion = function() {
-  if (typeof dailyQuests !== 'undefined') {
-      dailyQuests.forEach(q => q.completed = false);
-      saveQuests();
-      renderQuests();
-  }
-};
+  const savedNotes = localStorage.getItem('solo_system_notes');
+  if (savedNotes) notesTextarea.value = savedNotes;
 
-window.runDailySystemOnce = function() {
-  const DAY_KEY = "solo_last_day";
-  const today = new Date().toDateString();
-  const lastDay = localStorage.getItem(DAY_KEY);
+  notesTextarea.addEventListener('input', () => {
+    localStorage.setItem('solo_system_notes', notesTextarea.value);
+  });
+}
 
-  const suppressionDate = localStorage.getItem("solo_suppression_date");
-  if (suppressionDate && suppressionDate !== today) {
-      localStorage.removeItem("solo_suppression_date");
-  }
-
-  if (lastDay !== today) {
-    applyDailyPenalty();
-    resetDailyCompletion();
-    if (typeof checkForSuppression === 'function') checkForSuppression();
-
-    // Reset XP Envelope state
-    localStorage.setItem('solo_daily_xp_awarded', '0');
-    localStorage.setItem('solo_xp_date', today);
-
-    localStorage.setItem(DAY_KEY, today);
-  }
-};
-
+// BOOTSTRAP
 document.addEventListener('DOMContentLoaded', () => {
   updateUI();
   initParticleSystem();

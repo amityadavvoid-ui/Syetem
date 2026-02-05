@@ -56,7 +56,7 @@ body.tier-1b {
   --border-color: rgba(44, 255, 107, 0.3);
 }
 
-/* Tier 1c: Monarch Candidate (Thunder Yellow) */
+/* Tier 1c: Monarch Candidate (Thunder Yellow + Violet) */
 body.tier-1c {
   --glow-color: rgba(225, 205, 110, 0.65); /* Desaturated Gold */
   --border-color: rgba(225, 205, 110, 0.4);
@@ -100,9 +100,11 @@ body.tier-3 {
 }
 
 @keyframes microTension {
+  /* Static with random flickers of tension */
   0%, 100% { border-color: rgba(225, 205, 110, 0.4); box-shadow: 0 0 5px rgba(225, 205, 110, 0.1); }
-  5%, 10% { border-color: rgba(160, 80, 255, 0.6); box-shadow: 0 0 8px rgba(160, 80, 255, 0.3); } /* Violet flicker */
-  15% { border-color: rgba(225, 205, 110, 0.4); }
+  45% { border-color: rgba(225, 205, 110, 0.4); box-shadow: 0 0 5px rgba(225, 205, 110, 0.1); }
+  50% { border-color: rgba(160, 80, 255, 0.6); box-shadow: 0 0 10px rgba(160, 80, 255, 0.4); } /* Violet snap */
+  55% { border-color: rgba(225, 205, 110, 0.4); box-shadow: 0 0 5px rgba(225, 205, 110, 0.1); }
 }
 
 @keyframes neonBorderPulse {
@@ -191,7 +193,7 @@ body.tier-1b .card {
 
 /* Tier 1c (Monarch Candidate) - Tense, Unstable */
 body.tier-1c .card {
-  animation: microTension 3s linear infinite; /* Unstable flicker */
+  animation: microTension 4s linear infinite; /* Unstable flicker */
 }
 
 /* Tier 2 (Shadow Monarch) */
