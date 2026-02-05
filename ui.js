@@ -1,11 +1,11 @@
 /* ================================
    UI.JS – FULL IMPLEMENTATION
-   All 12 Issues Resolved
+   System Repair: Particles, Interference, Calendar, Tiers
 ================================ */
 
 /* ================================
    ISSUE 1: PARTICLE SYSTEM
-   JavaScript-controlled lifecycle
+   Fixed lifecycle, positioning, and tiers
 ================================ */
 
 const PARTICLE_CAP = 25;
@@ -15,6 +15,14 @@ function getTier() {
   if (player.level >= 150) return 3;
   if (player.level >= 100) return 2;
   return 1;
+}
+
+// Helper to check precise sub-tier for Tier 1
+function getSubTier() {
+  if (player.level >= 71) return '1c';
+  if (player.level >= 50) return '1b';
+  if (player.level >= 30) return '1a';
+  return '1';
 }
 
 function spawnParticle() {
@@ -27,36 +35,45 @@ function spawnParticle() {
   const particle = document.createElement('div');
   particle.className = 'crystal-particle';
   
+  // Size variation
   const size = Math.random() * 3 + 2;
   particle.style.width = size + 'px';
   particle.style.height = size + 'px';
+
+  // Random horizontal position
   particle.style.left = Math.random() * 100 + '%';
-  particle.style.bottom = '-20px';
+
+  // Start BELOW viewport (Issue 1 Requirement)
+  particle.style.bottom = '-15vh';
   
   // Tier-based spawn settings
   let duration, opacity;
+
+  // Issue 1: "Motion slightly faster than current but still restrained"
+  // Previous: T1=28s, T2=38s, T3=50s
+  // Adjusted: Faster = Lower duration
   if (tier === 1) {
-    duration = 28000;
+    duration = 20000 + Math.random() * 5000; // 20-25s
     opacity = 0.25;
   } else if (tier === 2) {
-    duration = 38000;
+    duration = 25000 + Math.random() * 8000; // 25-33s
     opacity = 0.35;
   } else {
-    duration = 50000;
+    duration = 35000 + Math.random() * 10000; // 35-45s
     opacity = 0.45;
   }
 
   particle.style.opacity = '0';
   container.appendChild(particle);
 
-  // Add to active particles with metadata
   activeParticles.push({
     el: particle,
     createdAt: performance.now(),
     duration: duration,
     maxOpacity: opacity,
-    fadeInDuration: duration * 0.2,
-    sustainDuration: duration * 0.6
+    fadeInDuration: duration * 0.15, // 15% fade in
+    sustainDuration: duration * 0.70  // 70% sustain
+    // Remaining 15% fade out
   });
 }
 
@@ -86,10 +103,22 @@ function animateParticles(timestamp) {
       currentOpacity = p.maxOpacity * (1 - fadeProgress);
     }
 
-    // Calculate position (slow upward movement)
-    const translateY = -(elapsed / p.duration) * 110;
+    // Calculate position (Rise across ENTIRE screen)
+    // Start at -15vh, End at 115vh (total 130vh travel)
+    const travelDist = 130;
+    const progress = elapsed / p.duration;
+    const currentBottom = -15 + (progress * travelDist);
 
     p.el.style.opacity = currentOpacity;
+    // We use 'bottom' in style or transform translateY?
+    // spawnParticle sets 'bottom: -15vh'.
+    // Better to use transform for performance.
+    // Let's assume CSS sets `bottom: -15vh` as base, and we translate UP.
+    // Actually, `spawnParticle` sets `bottom: -15vh`.
+    // Let's just update `transform: translateY(...)`.
+    // Moving UP means negative Y.
+    // Total distance 130vh.
+    const translateY = -(progress * 130);
     p.el.style.transform = `translateY(${translateY}vh)`;
   }
 
@@ -97,19 +126,26 @@ function animateParticles(timestamp) {
 }
 
 function initParticleSystem() {
-  // Start animation loop
   requestAnimationFrame(animateParticles);
 
   setInterval(() => {
-    if (Math.random() < 0.3) {
+    // Tier-based spawn rate
+    // T1: faint, sparse (lower rate)
+    // T2: heavier (higher rate)
+    // T3: ceremonial (medium rate but impactful)
+    const tier = getTier();
+    let chance = 0.3;
+    if (tier === 1) chance = 0.2;
+    if (tier === 2) chance = 0.4;
+
+    if (Math.random() < chance) {
       spawnParticle();
     }
   }, 1000);
 }
 
 /* ================================
-   ISSUE 2 & 4: INTERFERENCE SYSTEM
-   Completion state + System Message
+   ISSUE 2, 3: INTERFERENCE & SYSTEM MESSAGE
 ================================ */
 
 function logInterference(types) {
@@ -120,6 +156,7 @@ function logInterference(types) {
     log[today] = [];
   }
   
+  // Issue 3: Multiple types may be selected, append unique
   types.forEach(type => {
     if (!log[today].includes(type)) {
       log[today].push(type);
@@ -133,13 +170,9 @@ function logInterference(types) {
 function hasInterferenceToday() {
   const today = new Date().toISOString().split('T')[0];
   const log = JSON.parse(localStorage.getItem('solo_interference_log') || '{}');
+  // Issue 3: If >= 1 interference logged -> Day Marked Complete
   return log[today] && log[today].length > 0;
 }
-
-/* ================================
-   ISSUE 3: INTERFERENCE MODAL
-   Dedicated immediate feedback
-================================ */
 
 function showInterferenceConfirmation() {
   const modal = document.getElementById('systemModal');
@@ -150,14 +183,14 @@ function showInterferenceConfirmation() {
   
   title.textContent = 'INTERFERENCE LOGGED';
   title.style.color = '#ef4444';
-  body.textContent = 'Interference detected.';
+  body.textContent = 'Interference detected. System unstable.';
   body.style.color = '#e5e5e5';
   body.style.textAlign = 'center';
   body.style.fontSize = '15px';
   modal.classList.remove('hidden');
 }
 
-// Bind interference button
+// Bind interference buttons
 const btnInterference = document.getElementById('btnInterference');
 if (btnInterference) {
   btnInterference.onclick = () => {
@@ -195,11 +228,6 @@ if (closeInterferenceBtn) {
   };
 }
 
-/* ================================
-   ISSUE 4: SYSTEM MESSAGE PANEL
-   Strict behavior based on state
-================================ */
-
 function updateSystemMessage() {
   const messageEl = document.getElementById('systemMessage');
   const badgeEl = document.getElementById('systemStatusBadge');
@@ -207,11 +235,9 @@ function updateSystemMessage() {
   
   if (!messageEl || !badgeEl || !panel) return;
   
-  // Check suppression
   const suppressed = typeof isSuppressed === 'function' && isSuppressed();
   const interferenceToday = hasInterferenceToday();
   
-  // Remove all state classes
   panel.classList.remove('state-STABLE', 'state-WARNING', 'state-UNSTABLE', 'state-DEGRADING', 'state-SUPPRESSION');
   
   if (suppressed) {
@@ -222,7 +248,7 @@ function updateSystemMessage() {
   } else if (interferenceToday) {
     badgeEl.textContent = 'SYSTEM STATUS: UNSTABLE';
     badgeEl.className = 'system-status-badge state-UNSTABLE';
-    messageEl.textContent = 'Interference detected.';
+    messageEl.textContent = 'Interference detected. Efficiency compromised.';
     panel.classList.add('state-UNSTABLE');
   } else {
     badgeEl.textContent = 'SYSTEM STATUS: STABLE';
@@ -236,7 +262,6 @@ function updateSystemMessage() {
 
 /* ================================
    ISSUE 5: UNKNOWN ENTITY PROGRESS
-   Always visible, silent reveal
 ================================ */
 
 function updateUnknownProgress() {
@@ -252,7 +277,6 @@ function updateUnknownProgress() {
   
   // Shadow Monarch progress (0-100)
   if (level < 100) {
-    // Show unknown, hide shadow
     unknownProgress.style.display = 'block';
     shadowProgress.style.display = 'none';
     
@@ -262,7 +286,6 @@ function updateUnknownProgress() {
       unknownProgressValue.textContent = `Progress: ${percentage}%`;
     }
   } else {
-    // Reveal shadow, hide unknown
     unknownProgress.style.display = 'none';
     shadowProgress.style.display = 'block';
   }
@@ -280,10 +303,8 @@ function updateUnknownProgress() {
       grimProgressValue.textContent = `Alignment Drift: ${percentage}%`;
     }
   } else {
-    // Tier 3 reveal
     grimProgress.style.display = 'block';
     grimProgress.classList.remove('locked');
-    
     if (grimProgressValue) {
       grimProgressValue.textContent = 'Authority Recognized';
     }
@@ -291,15 +312,22 @@ function updateUnknownProgress() {
 }
 
 /* ================================
-   ISSUE 8: NOTES EXPAND/COLLAPSE
+   ISSUE 8/4: CALENDAR EXPAND & NOTES
 ================================ */
 
+// Notes Expand
 let notesExpanded = false;
 const notesTextarea = document.getElementById('systemNotes');
 const notesPanel = document.querySelector('.notes-panel');
 
 if (notesPanel && notesTextarea) {
+  // Only add if not already present (check specific logic if needed, but safe here)
+  // Clean up previous buttons if any (simple implementation)
+  const existingBtn = notesPanel.querySelector('button.notes-toggle');
+  if (existingBtn) existingBtn.remove();
+
   const toggleBtn = document.createElement('button');
+  toggleBtn.className = 'notes-toggle';
   toggleBtn.textContent = 'EXPAND';
   toggleBtn.style.width = 'auto';
   toggleBtn.style.padding = '4px 8px';
@@ -319,24 +347,39 @@ if (notesPanel && notesTextarea) {
   
   notesPanel.appendChild(toggleBtn);
   
-  // Load saved notes
   const savedNotes = localStorage.getItem('solo_system_notes');
   if (savedNotes) {
     notesTextarea.value = savedNotes;
   }
   
-  // Save on change
   notesTextarea.addEventListener('input', () => {
     localStorage.setItem('solo_system_notes', notesTextarea.value);
   });
 }
 
+// Issue 4: Calendar Expand
+const toggleCalendarBtn = document.getElementById('toggleCalendarBtn');
+const streakCalendar = document.getElementById('streakCalendar');
+
+if (toggleCalendarBtn && streakCalendar) {
+  toggleCalendarBtn.onclick = () => {
+    // Toggle class
+    streakCalendar.classList.toggle('expanded');
+
+    // Update button text
+    if (streakCalendar.classList.contains('expanded')) {
+      toggleCalendarBtn.textContent = 'COLLAPSE';
+    } else {
+      toggleCalendarBtn.textContent = 'EXPAND';
+    }
+  };
+}
+
 /* ================================
-   MAIN UI UPDATE FUNCTION
+   MAIN UI UPDATE & ISSUE 5 (TIERS)
 ================================ */
 
 function updateUI() {
-  // Level and XP
   const levelCenter = document.getElementById('levelCenter');
   const levelTextInline = document.getElementById('levelTextInline');
   const xpText = document.getElementById('xpText');
@@ -350,7 +393,6 @@ function updateUI() {
     xpText.textContent = `XP ${player.xp} / ${needed}`;
   }
   
-  // XP Ring (Issue 6: precision display)
   if (xpRing) {
     const percent = (player.xp / needed) * 100;
     const circumference = 2 * Math.PI * 60;
@@ -358,7 +400,6 @@ function updateUI() {
     xpRing.style.strokeDashoffset = offset;
   }
   
-  // Attributes (Issue 10: stat overflow safety)
   const stats = ['str', 'agi', 'int', 'vit', 'will'];
   stats.forEach(stat => {
     const val = player.stats[stat] || 0;
@@ -372,14 +413,12 @@ function updateUI() {
     }
   });
   
-  // Title
   const title = getTitle(player.level);
   const playerTitle = document.getElementById('playerTitle');
   const titleMeta = document.getElementById('titleMeta');
   if (playerTitle) playerTitle.textContent = title;
   if (titleMeta) titleMeta.textContent = title;
   
-  // Rank
   const rankText = document.getElementById('rankText');
   if (rankText) {
     let rank = 'E';
@@ -394,23 +433,20 @@ function updateUI() {
     rankText.innerHTML = `Rank ${rank} · Level <span>${player.level}</span>`;
   }
   
-  // Apply tier classes
+  // Issue 5: Tier & Sub-tier Classes
   const tier = getTier();
+  const subTier = getSubTier();
+
   document.body.className = '';
+
   if (tier === 3) {
     document.body.classList.add('tier-3');
   } else if (tier === 2) {
     document.body.classList.add('tier-2');
   } else {
+    // Tier 1 Logic
     document.body.classList.add('tier-1');
-    // Sub-tiers
-    if (player.level >= 71) {
-      document.body.classList.add('tier-1c');
-    } else if (player.level >= 50) {
-      document.body.classList.add('tier-1b');
-    } else {
-      document.body.classList.add('tier-1a');
-    }
+    document.body.classList.add(`tier-${subTier}`);
   }
   
   updateSystemMessage();
@@ -439,7 +475,6 @@ if (avatarImage && avatarInput) {
     }
   };
   
-  // Load saved avatar
   const savedAvatar = localStorage.getItem('solo_avatar');
   if (savedAvatar) {
     avatarImage.src = savedAvatar;
@@ -447,7 +482,7 @@ if (avatarImage && avatarInput) {
 }
 
 /* ================================
-   COSMIC STARS (Background)
+   COSMIC STARS
 ================================ */
 
 function initCosmicStars() {
@@ -474,7 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initParticleSystem();
   initCosmicStars();
   
-  // Check for penalty modal
   const todayStr = new Date().toDateString();
   const lastPenaltyDate = localStorage.getItem('solo_last_penalty_date');
   
