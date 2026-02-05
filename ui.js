@@ -852,6 +852,46 @@ if (notesPanel && notesTextarea) {
   });
 }
 
+/* ================================
+   ISSUE 2 ADDENDUM: PENALTY OVERRIDE
+   Override applyDailyPenalty to align with Envelope System
+   (No raw XP loss, just Stat penalty and Efficiency loss)
+================================ */
+
+window.applyDailyPenalty = function() {
+  let penaltyApplied = false;
+
+  if (typeof dailyQuests !== 'undefined') {
+      dailyQuests.forEach(q => {
+        if (!q.completed) {
+          // Stat Penalty (-1) matches Reward (+1)
+          // Blocked if stat is 0 (Logic from timer.js)
+          const statKey = q.stat.toLowerCase();
+          if (player.stats[statKey] > 0) {
+            player.stats[statKey]--;
+            penaltyApplied = true;
+          }
+          // XP Penalty: REMOVED (XP is slowed, not erased)
+          // The "Penalty" of importance is handled by the Efficiency Ratio
+          // in calculateDailyXP (Missing a Critical quest hurts efficiency more).
+        }
+      });
+  }
+
+  if (penaltyApplied) {
+    savePlayer();
+    if (typeof updateUI === 'function') updateUI();
+
+    const todayStr = new Date().toDateString();
+    localStorage.setItem('solo_last_penalty_date', todayStr);
+
+    // Attempt to use existing notification system
+    if (typeof sendNotification === 'function') {
+        sendNotification("System Alert", "Penalty enforced. Attributes reduced.");
+    }
+  }
+};
+
 // BOOTSTRAP
 document.addEventListener('DOMContentLoaded', () => {
   updateUI();
