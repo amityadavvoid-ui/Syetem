@@ -55,19 +55,16 @@ function spawnParticle() {
   particle.style.bottom = '-10vh';
   
   // Tier-based settings
-  let duration, maxOpacity, speedMultiplier;
+  let duration, maxOpacity;
   if (tier === 3) { // Grim Reaper: Bright, ceremonial, authoritative
     duration = 20000;
     maxOpacity = 0.8;
-    speedMultiplier = 0.5; // Slow rise
   } else if (tier === 2) { // Shadow Monarch: Darker, heavy
     duration = 15000;
     maxOpacity = 0.6;
-    speedMultiplier = 0.7;
   } else { // Tier 1: Faint, sparse
     duration = 12000;
     maxOpacity = 0.4;
-    speedMultiplier = 1.0; // Faster
   }
 
   // Initial state
@@ -75,49 +72,60 @@ function spawnParticle() {
   particle.style.transform = 'translateY(0)';
 
   container.appendChild(particle);
-  activeParticles.push(particle);
 
-  // Lifecycle Animation Loop
-  let startTime = Date.now();
+  activeParticles.push({
+    el: particle,
+    startTime: Date.now(),
+    duration: duration,
+    maxOpacity: maxOpacity
+  });
+}
 
-  function update() {
-    const now = Date.now();
-    const elapsed = now - startTime;
-    const progress = elapsed / duration;
+function updateParticles() {
+  if (activeParticles.length > 0) {
+      const now = Date.now();
 
-    if (progress >= 1) {
-      // End of life
-      if (particle.parentNode) particle.parentNode.removeChild(particle);
-      activeParticles = activeParticles.filter(p => p !== particle);
-      return;
-    }
+      // Iterate backwards to allow safe removal
+      for (let i = activeParticles.length - 1; i >= 0; i--) {
+        const p = activeParticles[i];
+        const elapsed = now - p.startTime;
+        const progress = elapsed / p.duration;
 
-    // Opacity Logic: Fade in -> Sustain -> Fade out
-    let currentOpacity = 0;
-    if (progress < 0.1) { // Fast fade in (10%)
-      currentOpacity = (progress / 0.1) * maxOpacity;
-    } else if (progress < 0.9) { // Long sustain (80%)
-      currentOpacity = maxOpacity;
-    } else { // Fade out (10%)
-      currentOpacity = maxOpacity * (1 - (progress - 0.9) / 0.1);
-    }
+        if (progress >= 1) {
+          // End of life
+          if (p.el.parentNode) p.el.parentNode.removeChild(p.el);
+          activeParticles.splice(i, 1);
+          continue;
+        }
 
-    // Movement Logic: Rise across ENTIRE screen (100vh + buffer)
-    // Start at -10vh, move up by 120vh to clear top
-    const moveY = -1 * (progress * 120);
+        // Opacity Logic: Fade in -> Sustain -> Fade out
+        let currentOpacity = 0;
+        if (progress < 0.1) { // Fast fade in (10%)
+          currentOpacity = (progress / 0.1) * p.maxOpacity;
+        } else if (progress < 0.9) { // Long sustain (80%)
+          currentOpacity = p.maxOpacity;
+        } else { // Fade out (10%)
+          currentOpacity = p.maxOpacity * (1 - (progress - 0.9) / 0.1);
+        }
 
-    particle.style.opacity = currentOpacity;
-    particle.style.transform = `translateY(${moveY}vh)`;
+        // Movement Logic: Rise across ENTIRE screen (100vh + buffer)
+        // Start at -10vh, move up by 120vh to clear top
+        const moveY = -1 * (progress * 120);
 
-    requestAnimationFrame(update);
+        p.el.style.opacity = currentOpacity;
+        p.el.style.transform = `translateY(${moveY}vh)`;
+      }
   }
 
-  requestAnimationFrame(update);
+  requestAnimationFrame(updateParticles);
 }
 
 function initParticleSystem() {
   const container = document.getElementById('bgParticles');
   if (container) container.innerHTML = '';
+
+  // Start the single loop
+  requestAnimationFrame(updateParticles);
 
   setInterval(() => {
     const tier = getNumericTier();
