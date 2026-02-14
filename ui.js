@@ -34,6 +34,7 @@ function getNumericTier() {
 
 const PARTICLE_CAP = 25;
 let activeParticles = [];
+let particlesLoopRunning = false;
 
 function spawnParticle() {
   if (activeParticles.length >= PARTICLE_CAP) return;
@@ -75,44 +76,59 @@ function spawnParticle() {
   particle.style.transform = 'translateY(0)';
 
   container.appendChild(particle);
-  activeParticles.push(particle);
 
-  // Lifecycle Animation Loop
-  let startTime = Date.now();
+  // Store state
+  activeParticles.push({
+    element: particle,
+    startTime: Date.now(),
+    duration: duration,
+    maxOpacity: maxOpacity
+  });
 
-  function update() {
-    const now = Date.now();
-    const elapsed = now - startTime;
-    const progress = elapsed / duration;
+  if (!particlesLoopRunning) {
+    particlesLoopRunning = true;
+    requestAnimationFrame(updateParticlesLoop);
+  }
+}
+
+function updateParticlesLoop() {
+  if (activeParticles.length === 0) {
+    particlesLoopRunning = false;
+    return;
+  }
+
+  const now = Date.now();
+
+  // Iterate backwards for safe removal
+  for (let i = activeParticles.length - 1; i >= 0; i--) {
+    const p = activeParticles[i];
+    const elapsed = now - p.startTime;
+    const progress = elapsed / p.duration;
 
     if (progress >= 1) {
-      // End of life
-      if (particle.parentNode) particle.parentNode.removeChild(particle);
-      activeParticles = activeParticles.filter(p => p !== particle);
-      return;
+      if (p.element.parentNode) p.element.parentNode.removeChild(p.element);
+      activeParticles.splice(i, 1);
+      continue;
     }
 
     // Opacity Logic: Fade in -> Sustain -> Fade out
     let currentOpacity = 0;
     if (progress < 0.1) { // Fast fade in (10%)
-      currentOpacity = (progress / 0.1) * maxOpacity;
+      currentOpacity = (progress / 0.1) * p.maxOpacity;
     } else if (progress < 0.9) { // Long sustain (80%)
-      currentOpacity = maxOpacity;
+      currentOpacity = p.maxOpacity;
     } else { // Fade out (10%)
-      currentOpacity = maxOpacity * (1 - (progress - 0.9) / 0.1);
+      currentOpacity = p.maxOpacity * (1 - (progress - 0.9) / 0.1);
     }
 
     // Movement Logic: Rise across ENTIRE screen (100vh + buffer)
-    // Start at -10vh, move up by 120vh to clear top
     const moveY = -1 * (progress * 120);
 
-    particle.style.opacity = currentOpacity;
-    particle.style.transform = `translateY(${moveY}vh)`;
-
-    requestAnimationFrame(update);
+    p.element.style.opacity = currentOpacity;
+    p.element.style.transform = `translateY(${moveY}vh)`;
   }
 
-  requestAnimationFrame(update);
+  requestAnimationFrame(updateParticlesLoop);
 }
 
 function initParticleSystem() {
