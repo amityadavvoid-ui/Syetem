@@ -34,6 +34,48 @@ function getNumericTier() {
 
 const PARTICLE_CAP = 25;
 let activeParticles = [];
+let particleLoopRunning = false;
+
+// Unified Particle Loop (Optimization)
+function updateParticlesLoop() {
+  const now = Date.now();
+
+  // Iterate backwards to allow safe removal
+  for (let i = activeParticles.length - 1; i >= 0; i--) {
+    const p = activeParticles[i];
+    const elapsed = now - p.startTime;
+    const progress = elapsed / p.duration;
+
+    if (progress >= 1) {
+      // End of life
+      if (p.element.parentNode) p.element.parentNode.removeChild(p.element);
+      activeParticles.splice(i, 1);
+      continue;
+    }
+
+    // Opacity Logic: Fade in -> Sustain -> Fade out
+    let currentOpacity = 0;
+    if (progress < 0.1) { // Fast fade in (10%)
+      currentOpacity = (progress / 0.1) * p.maxOpacity;
+    } else if (progress < 0.9) { // Long sustain (80%)
+      currentOpacity = p.maxOpacity;
+    } else { // Fade out (10%)
+      currentOpacity = p.maxOpacity * (1 - (progress - 0.9) / 0.1);
+    }
+
+    // Movement Logic: Rise across ENTIRE screen
+    const moveY = -1 * (progress * 120);
+
+    p.element.style.opacity = currentOpacity;
+    p.element.style.transform = `translateY(${moveY}vh)`;
+  }
+
+  if (activeParticles.length > 0) {
+      requestAnimationFrame(updateParticlesLoop);
+  } else {
+      particleLoopRunning = false;
+  }
+}
 
 function spawnParticle() {
   if (activeParticles.length >= PARTICLE_CAP) return;
@@ -41,12 +83,12 @@ function spawnParticle() {
   const container = document.getElementById('bgParticles');
   if (!container) return;
 
-  const tier = getNumericTier(); // 1, 2, or 3
+  const tier = getNumericTier();
   const particle = document.createElement('div');
   particle.className = 'crystal-particle';
   
   // Randomize size
-  const size = Math.random() * 3 + 2; // 2px to 5px
+  const size = Math.random() * 3 + 2;
   particle.style.width = size + 'px';
   particle.style.height = size + 'px';
 
@@ -54,65 +96,35 @@ function spawnParticle() {
   particle.style.left = Math.random() * 100 + '%';
   particle.style.bottom = '-10vh';
   
-  // Tier-based settings
-  let duration, maxOpacity, speedMultiplier;
-  if (tier === 3) { // Grim Reaper: Bright, ceremonial, authoritative
+  let duration, maxOpacity;
+  if (tier === 3) {
     duration = 20000;
     maxOpacity = 0.8;
-    speedMultiplier = 0.5; // Slow rise
-  } else if (tier === 2) { // Shadow Monarch: Darker, heavy
+  } else if (tier === 2) {
     duration = 15000;
     maxOpacity = 0.6;
-    speedMultiplier = 0.7;
-  } else { // Tier 1: Faint, sparse
+  } else {
     duration = 12000;
     maxOpacity = 0.4;
-    speedMultiplier = 1.0; // Faster
   }
 
-  // Initial state
   particle.style.opacity = '0';
   particle.style.transform = 'translateY(0)';
 
   container.appendChild(particle);
-  activeParticles.push(particle);
 
-  // Lifecycle Animation Loop
-  let startTime = Date.now();
+  // Store state object instead of just element
+  activeParticles.push({
+      element: particle,
+      startTime: Date.now(),
+      duration: duration,
+      maxOpacity: maxOpacity
+  });
 
-  function update() {
-    const now = Date.now();
-    const elapsed = now - startTime;
-    const progress = elapsed / duration;
-
-    if (progress >= 1) {
-      // End of life
-      if (particle.parentNode) particle.parentNode.removeChild(particle);
-      activeParticles = activeParticles.filter(p => p !== particle);
-      return;
-    }
-
-    // Opacity Logic: Fade in -> Sustain -> Fade out
-    let currentOpacity = 0;
-    if (progress < 0.1) { // Fast fade in (10%)
-      currentOpacity = (progress / 0.1) * maxOpacity;
-    } else if (progress < 0.9) { // Long sustain (80%)
-      currentOpacity = maxOpacity;
-    } else { // Fade out (10%)
-      currentOpacity = maxOpacity * (1 - (progress - 0.9) / 0.1);
-    }
-
-    // Movement Logic: Rise across ENTIRE screen (100vh + buffer)
-    // Start at -10vh, move up by 120vh to clear top
-    const moveY = -1 * (progress * 120);
-
-    particle.style.opacity = currentOpacity;
-    particle.style.transform = `translateY(${moveY}vh)`;
-
-    requestAnimationFrame(update);
+  if (!particleLoopRunning) {
+      particleLoopRunning = true;
+      requestAnimationFrame(updateParticlesLoop);
   }
-
-  requestAnimationFrame(update);
 }
 
 function initParticleSystem() {
