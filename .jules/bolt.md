@@ -1,0 +1,3 @@
+## 2026-02-26 - Single Loop RAF Optimization
+**Learning:** Browser environments often throttle `requestAnimationFrame` calls per loop, but total calls scale with the number of loops. By consolidating multiple animation loops into a single `requestAnimationFrame` loop, we decouple the processing overhead from the number of animated entities, significantly reducing the total number of function calls and browser overhead.
+**Action:** When implementing particle systems or multiple animated entities, always use a single `update` loop that iterates over the active entities rather than creating a `requestAnimationFrame` loop for each entity. This ensures scalability and better performance.
