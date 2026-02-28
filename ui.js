@@ -75,44 +75,63 @@ function spawnParticle() {
   particle.style.transform = 'translateY(0)';
 
   container.appendChild(particle);
-  activeParticles.push(particle);
 
-  // Lifecycle Animation Loop
-  let startTime = Date.now();
+  // ⚡ Bolt: Store state object instead of just DOM element for centralized loop
+  activeParticles.push({
+    element: particle,
+    startTime: Date.now(),
+    duration,
+    maxOpacity
+  });
 
-  function update() {
-    const now = Date.now();
-    const elapsed = now - startTime;
-    const progress = elapsed / duration;
+  // ⚡ Bolt: Kickstart the centralized loop if it's the first particle
+  if (activeParticles.length === 1) {
+    requestAnimationFrame(updateParticlesLoop);
+  }
+}
+
+// ⚡ Bolt: Centralized animation loop to reduce rAF overhead
+function updateParticlesLoop() {
+  if (activeParticles.length === 0) return;
+
+  const now = Date.now();
+  let aliveParticles = [];
+
+  for (let i = 0; i < activeParticles.length; i++) {
+    const p = activeParticles[i];
+    const elapsed = now - p.startTime;
+    const progress = elapsed / p.duration;
 
     if (progress >= 1) {
       // End of life
-      if (particle.parentNode) particle.parentNode.removeChild(particle);
-      activeParticles = activeParticles.filter(p => p !== particle);
-      return;
+      if (p.element.parentNode) p.element.parentNode.removeChild(p.element);
+      continue; // Skip pushing to aliveParticles
     }
 
     // Opacity Logic: Fade in -> Sustain -> Fade out
     let currentOpacity = 0;
-    if (progress < 0.1) { // Fast fade in (10%)
-      currentOpacity = (progress / 0.1) * maxOpacity;
-    } else if (progress < 0.9) { // Long sustain (80%)
-      currentOpacity = maxOpacity;
-    } else { // Fade out (10%)
-      currentOpacity = maxOpacity * (1 - (progress - 0.9) / 0.1);
+    if (progress < 0.1) {
+      currentOpacity = (progress / 0.1) * p.maxOpacity;
+    } else if (progress < 0.9) {
+      currentOpacity = p.maxOpacity;
+    } else {
+      currentOpacity = p.maxOpacity * (1 - (progress - 0.9) / 0.1);
     }
 
-    // Movement Logic: Rise across ENTIRE screen (100vh + buffer)
-    // Start at -10vh, move up by 120vh to clear top
+    // Movement Logic
     const moveY = -1 * (progress * 120);
 
-    particle.style.opacity = currentOpacity;
-    particle.style.transform = `translateY(${moveY}vh)`;
+    p.element.style.opacity = currentOpacity;
+    p.element.style.transform = `translateY(${moveY}vh)`;
 
-    requestAnimationFrame(update);
+    aliveParticles.push(p);
   }
 
-  requestAnimationFrame(update);
+  activeParticles = aliveParticles;
+
+  if (activeParticles.length > 0) {
+    requestAnimationFrame(updateParticlesLoop);
+  }
 }
 
 function initParticleSystem() {
