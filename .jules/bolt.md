@@ -1,0 +1,3 @@
+## 2024-03-01 - Optimizing the Active Particle System Animation Loop
+**Learning:** Having an independent `requestAnimationFrame` loop per DOM element for a continuous animation system can lead to severe performance overhead and unneeded main thread blockage. In `ui.js`, up to 25 particles each maintained their own closure states and loop functions, causing excessive `requestAnimationFrame` invocations overlapping per frame.
+**Action:** Consolidate active items into an array of objects holding all necessary state properties instead of running multiple loops. Run a single `requestAnimationFrame` loop that iterates over the active array and calculates updates for all items at once, preventing multiple loops running simultaneously and reducing memory overhead from closures.
