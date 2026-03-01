@@ -75,44 +75,62 @@ function spawnParticle() {
   particle.style.transform = 'translateY(0)';
 
   container.appendChild(particle);
-  activeParticles.push(particle);
+  activeParticles.push({
+    element: particle,
+    startTime: Date.now(),
+    duration: duration,
+    maxOpacity: maxOpacity
+  });
 
-  // Lifecycle Animation Loop
-  let startTime = Date.now();
+  if (!isParticleLoopRunning) {
+    isParticleLoopRunning = true;
+    requestAnimationFrame(updateParticlesLoop);
+  }
+}
 
-  function update() {
-    const now = Date.now();
-    const elapsed = now - startTime;
-    const progress = elapsed / duration;
+let isParticleLoopRunning = false;
 
-    if (progress >= 1) {
-      // End of life
-      if (particle.parentNode) particle.parentNode.removeChild(particle);
-      activeParticles = activeParticles.filter(p => p !== particle);
-      return;
-    }
-
-    // Opacity Logic: Fade in -> Sustain -> Fade out
-    let currentOpacity = 0;
-    if (progress < 0.1) { // Fast fade in (10%)
-      currentOpacity = (progress / 0.1) * maxOpacity;
-    } else if (progress < 0.9) { // Long sustain (80%)
-      currentOpacity = maxOpacity;
-    } else { // Fade out (10%)
-      currentOpacity = maxOpacity * (1 - (progress - 0.9) / 0.1);
-    }
-
-    // Movement Logic: Rise across ENTIRE screen (100vh + buffer)
-    // Start at -10vh, move up by 120vh to clear top
-    const moveY = -1 * (progress * 120);
-
-    particle.style.opacity = currentOpacity;
-    particle.style.transform = `translateY(${moveY}vh)`;
-
-    requestAnimationFrame(update);
+// ⚡ Bolt Optimization: Centralized Animation Loop
+// Previously, each particle spawned its own requestAnimationFrame loop, which created significant
+// CPU/GPU overhead when multiple particles were active. By centralizing the update loop,
+// we only run a single requestAnimationFrame to update all active particles simultaneously,
+// reducing main thread blockage and function call overhead from O(N) to O(1).
+function updateParticlesLoop() {
+  if (activeParticles.length === 0) {
+    isParticleLoopRunning = false;
+    return;
   }
 
-  requestAnimationFrame(update);
+  const now = Date.now();
+  // Loop backwards to safely splice elements during iteration
+  for (let i = activeParticles.length - 1; i >= 0; i--) {
+    const p = activeParticles[i];
+    const elapsed = now - p.startTime;
+    const progress = elapsed / p.duration;
+
+    if (progress >= 1) {
+      if (p.element.parentNode) p.element.parentNode.removeChild(p.element);
+      activeParticles.splice(i, 1);
+      continue;
+    }
+
+    // Original opacity logic: fade in (0-10%), hold (10-90%), fade out (90-100%)
+    let currentOpacity = 0;
+    if (progress < 0.1) {
+      currentOpacity = (progress / 0.1) * p.maxOpacity;
+    } else if (progress < 0.9) {
+      currentOpacity = p.maxOpacity;
+    } else {
+      currentOpacity = p.maxOpacity * (1 - (progress - 0.9) / 0.1);
+    }
+
+    // Original movement logic: drift upwards to max -120vh over lifetime
+    const moveY = -1 * (progress * 120);
+    p.element.style.opacity = currentOpacity;
+    p.element.style.transform = `translateY(${moveY}vh)`;
+  }
+
+  requestAnimationFrame(updateParticlesLoop);
 }
 
 function initParticleSystem() {
