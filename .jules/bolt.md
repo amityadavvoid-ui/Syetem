@@ -1,0 +1,3 @@
+## 2024-05-24 - Single Render Loop Optimization
+**Learning:** In a vanilla JS particle system, spawning a new `requestAnimationFrame` for every active particle (even capped at 25) creates unnecessary closure overhead and redundant execution context. It's more efficient to have a single central animation loop that iterates over a state array containing the necessary timing and boundary properties.
+**Action:** When creating visual effects with multiple objects, always maintain a single global render loop and a separate state collection rather than attaching render loops directly to each object instance.
