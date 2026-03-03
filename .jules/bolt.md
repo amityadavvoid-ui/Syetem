@@ -1,0 +1,3 @@
+## 2026-03-03 - Centralize Particle Animation Loops
+**Learning:** Having many DOM elements with their own individual `requestAnimationFrame` closures is a major performance bottleneck for UI animations in this codebase. Spawning a separate loop per particle allocates many unnecessary objects and stresses the JS main thread unnecessarily.
+**Action:** Always prefer a single, centralized `requestAnimationFrame` loop that iterates over a simple array of state objects to manage concurrent animations. This reduces object creation overhead and provides better framerate consistency.
