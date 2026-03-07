@@ -1,0 +1,3 @@
+## 2024-05-24 - [Particle System Animation Overload]
+**Learning:** In a vanilla JS environment without component unmounting, launching individual `requestAnimationFrame` closures for every short-lived particle creates massive memory overhead and blocks the main thread as active count scales. The closure captures outer scope variables, preventing garbage collection until the animation ends.
+**Action:** Consolidate all concurrent animations into a single `requestAnimationFrame` loop that iterates over a flat array of simple state objects. Use one loop to rule them all instead of N concurrent loops.

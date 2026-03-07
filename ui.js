@@ -34,6 +34,53 @@ function getNumericTier() {
 
 const PARTICLE_CAP = 25;
 let activeParticles = [];
+let particlesLoopRunning = false;
+
+// ⚡ Bolt: Consolidated Animation Loop
+// Replaced individual closure-based requestAnimationFrame calls per particle
+// with a single loop that processes a state array.
+// Impact: Reduces main-thread blocking by batching DOM updates and eliminates closure memory overhead.
+function updateParticlesLoop() {
+  if (activeParticles.length === 0) {
+    particlesLoopRunning = false;
+    return;
+  }
+
+  const now = Date.now();
+
+  // Iterate backwards to safely remove elements
+  for (let i = activeParticles.length - 1; i >= 0; i--) {
+    const p = activeParticles[i];
+    const elapsed = now - p.startTime;
+    const progress = elapsed / p.duration;
+
+    if (progress >= 1) {
+      // End of life
+      if (p.element.parentNode) p.element.parentNode.removeChild(p.element);
+      activeParticles.splice(i, 1);
+      continue;
+    }
+
+    // Opacity Logic: Fade in -> Sustain -> Fade out
+    let currentOpacity = 0;
+    if (progress < 0.1) { // Fast fade in (10%)
+      currentOpacity = (progress / 0.1) * p.maxOpacity;
+    } else if (progress < 0.9) { // Long sustain (80%)
+      currentOpacity = p.maxOpacity;
+    } else { // Fade out (10%)
+      currentOpacity = p.maxOpacity * (1 - (progress - 0.9) / 0.1);
+    }
+
+    // Movement Logic: Rise across ENTIRE screen (100vh + buffer)
+    // Start at -10vh, move up by 120vh to clear top
+    const moveY = -1 * (progress * 120);
+
+    p.element.style.opacity = currentOpacity;
+    p.element.style.transform = `translateY(${moveY}vh)`;
+  }
+
+  requestAnimationFrame(updateParticlesLoop);
+}
 
 function spawnParticle() {
   if (activeParticles.length >= PARTICLE_CAP) return;
@@ -42,17 +89,17 @@ function spawnParticle() {
   if (!container) return;
 
   const tier = getNumericTier(); // 1, 2, or 3
-  const particle = document.createElement('div');
-  particle.className = 'crystal-particle';
+  const element = document.createElement('div');
+  element.className = 'crystal-particle';
   
   // Randomize size
   const size = Math.random() * 3 + 2; // 2px to 5px
-  particle.style.width = size + 'px';
-  particle.style.height = size + 'px';
+  element.style.width = size + 'px';
+  element.style.height = size + 'px';
 
   // Origin: BELOW the viewport
-  particle.style.left = Math.random() * 100 + '%';
-  particle.style.bottom = '-10vh';
+  element.style.left = Math.random() * 100 + '%';
+  element.style.bottom = '-10vh';
   
   // Tier-based settings
   let duration, maxOpacity, speedMultiplier;
@@ -71,48 +118,24 @@ function spawnParticle() {
   }
 
   // Initial state
-  particle.style.opacity = '0';
-  particle.style.transform = 'translateY(0)';
+  element.style.opacity = '0';
+  element.style.transform = 'translateY(0)';
 
-  container.appendChild(particle);
-  activeParticles.push(particle);
+  container.appendChild(element);
 
-  // Lifecycle Animation Loop
-  let startTime = Date.now();
+  // Store state instead of launching closure loop
+  activeParticles.push({
+    element,
+    startTime: Date.now(),
+    duration,
+    maxOpacity
+  });
 
-  function update() {
-    const now = Date.now();
-    const elapsed = now - startTime;
-    const progress = elapsed / duration;
-
-    if (progress >= 1) {
-      // End of life
-      if (particle.parentNode) particle.parentNode.removeChild(particle);
-      activeParticles = activeParticles.filter(p => p !== particle);
-      return;
-    }
-
-    // Opacity Logic: Fade in -> Sustain -> Fade out
-    let currentOpacity = 0;
-    if (progress < 0.1) { // Fast fade in (10%)
-      currentOpacity = (progress / 0.1) * maxOpacity;
-    } else if (progress < 0.9) { // Long sustain (80%)
-      currentOpacity = maxOpacity;
-    } else { // Fade out (10%)
-      currentOpacity = maxOpacity * (1 - (progress - 0.9) / 0.1);
-    }
-
-    // Movement Logic: Rise across ENTIRE screen (100vh + buffer)
-    // Start at -10vh, move up by 120vh to clear top
-    const moveY = -1 * (progress * 120);
-
-    particle.style.opacity = currentOpacity;
-    particle.style.transform = `translateY(${moveY}vh)`;
-
-    requestAnimationFrame(update);
+  // Start loop if not running
+  if (!particlesLoopRunning) {
+    particlesLoopRunning = true;
+    requestAnimationFrame(updateParticlesLoop);
   }
-
-  requestAnimationFrame(update);
 }
 
 function initParticleSystem() {
