@@ -1,0 +1,3 @@
+## 2024-05-24 - [Replace Individual RAF Loops with a Single Render Loop]
+**Learning:** In standard JavaScript UI architectures with many animating elements (like particles), assigning an individual `requestAnimationFrame` loop and a closure to every single element is a common anti-pattern that creates substantial memory and CPU overhead.
+**Action:** Instead, maintain a single global `requestAnimationFrame` loop (e.g. `updateParticlesLoop`) that iterates over an array of lightweight state objects representing the active entities, updating their DOM elements in one pass.
