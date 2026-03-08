@@ -75,44 +75,50 @@ function spawnParticle() {
   particle.style.transform = 'translateY(0)';
 
   container.appendChild(particle);
-  activeParticles.push(particle);
 
-  // Lifecycle Animation Loop
-  let startTime = Date.now();
+  // Bolt: Add a lightweight state object to be processed in the central loop
+  activeParticles.push({
+    element: particle,
+    startTime: Date.now(),
+    duration,
+    maxOpacity
+  });
+}
 
-  function update() {
-    const now = Date.now();
-    const elapsed = now - startTime;
-    const progress = elapsed / duration;
+// Bolt: Centralized loop replacing individual RAF and closures for each particle
+function updateParticlesLoop() {
+  const now = Date.now();
+
+  for (let i = activeParticles.length - 1; i >= 0; i--) {
+    const pInfo = activeParticles[i];
+    const elapsed = now - pInfo.startTime;
+    const progress = elapsed / pInfo.duration;
 
     if (progress >= 1) {
       // End of life
-      if (particle.parentNode) particle.parentNode.removeChild(particle);
-      activeParticles = activeParticles.filter(p => p !== particle);
-      return;
+      if (pInfo.element.parentNode) pInfo.element.parentNode.removeChild(pInfo.element);
+      activeParticles.splice(i, 1);
+      continue;
     }
 
     // Opacity Logic: Fade in -> Sustain -> Fade out
     let currentOpacity = 0;
     if (progress < 0.1) { // Fast fade in (10%)
-      currentOpacity = (progress / 0.1) * maxOpacity;
+      currentOpacity = (progress / 0.1) * pInfo.maxOpacity;
     } else if (progress < 0.9) { // Long sustain (80%)
-      currentOpacity = maxOpacity;
+      currentOpacity = pInfo.maxOpacity;
     } else { // Fade out (10%)
-      currentOpacity = maxOpacity * (1 - (progress - 0.9) / 0.1);
+      currentOpacity = pInfo.maxOpacity * (1 - (progress - 0.9) / 0.1);
     }
 
     // Movement Logic: Rise across ENTIRE screen (100vh + buffer)
-    // Start at -10vh, move up by 120vh to clear top
     const moveY = -1 * (progress * 120);
 
-    particle.style.opacity = currentOpacity;
-    particle.style.transform = `translateY(${moveY}vh)`;
-
-    requestAnimationFrame(update);
+    pInfo.element.style.opacity = currentOpacity;
+    pInfo.element.style.transform = `translateY(${moveY}vh)`;
   }
 
-  requestAnimationFrame(update);
+  requestAnimationFrame(updateParticlesLoop);
 }
 
 function initParticleSystem() {
@@ -130,6 +136,9 @@ function initParticleSystem() {
       spawnParticle();
     }
   }, 800);
+
+  // Bolt: Start the single particle loop
+  requestAnimationFrame(updateParticlesLoop);
 }
 
 /* ================================
