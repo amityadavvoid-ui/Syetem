@@ -75,21 +75,28 @@ function spawnParticle() {
   particle.style.transform = 'translateY(0)';
 
   container.appendChild(particle);
-  activeParticles.push(particle);
+  activeParticles.push({
+    element: particle,
+    startTime: Date.now(),
+    duration: duration,
+    maxOpacity: maxOpacity
+  });
+}
 
-  // Lifecycle Animation Loop
-  let startTime = Date.now();
+function updateParticlesLoop() {
+  const now = Date.now();
 
-  function update() {
-    const now = Date.now();
+  for (let i = activeParticles.length - 1; i >= 0; i--) {
+    const pState = activeParticles[i];
+    const { element, startTime, duration, maxOpacity } = pState;
     const elapsed = now - startTime;
     const progress = elapsed / duration;
 
     if (progress >= 1) {
       // End of life
-      if (particle.parentNode) particle.parentNode.removeChild(particle);
-      activeParticles = activeParticles.filter(p => p !== particle);
-      return;
+      if (element.parentNode) element.parentNode.removeChild(element);
+      activeParticles.splice(i, 1);
+      continue;
     }
 
     // Opacity Logic: Fade in -> Sustain -> Fade out
@@ -106,18 +113,19 @@ function spawnParticle() {
     // Start at -10vh, move up by 120vh to clear top
     const moveY = -1 * (progress * 120);
 
-    particle.style.opacity = currentOpacity;
-    particle.style.transform = `translateY(${moveY}vh)`;
-
-    requestAnimationFrame(update);
+    element.style.opacity = currentOpacity;
+    element.style.transform = `translateY(${moveY}vh)`;
   }
 
-  requestAnimationFrame(update);
+  requestAnimationFrame(updateParticlesLoop);
 }
 
 function initParticleSystem() {
   const container = document.getElementById('bgParticles');
   if (container) container.innerHTML = '';
+
+  // Start the centralized animation loop
+  requestAnimationFrame(updateParticlesLoop);
 
   setInterval(() => {
     const tier = getNumericTier();
